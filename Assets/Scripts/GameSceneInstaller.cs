@@ -1,18 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
+using Zenject;
 
-public class GameSceneInstaller : MonoBehaviour
+public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+// [SerializeField] [FoldoutGroup("Managers")] private    
 }
