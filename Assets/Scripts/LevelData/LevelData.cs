@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Grids;
+using JetBrains.Annotations;
 using Sirenix.OdinInspector;
 using Sirenix.Utilities;
 using UnityEditor;
@@ -391,6 +393,42 @@ namespace LevelManagement
             EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
         }
 #endif
+
+        #region Grid Helper
+
+        [SerializeField] [FoldoutGroup("Grid Helper")]
+        private List<ThreadData> m_QuestionThreadData;
+
+        [SerializeField] [FoldoutGroup("Grid Helper")]
+        private List<TunnelData> m_TunnelThreadData;
+
+        public List<ThreadData> QuestionThreadData => m_QuestionThreadData;
+
+        public List<TunnelData> TunnelThreadData => m_TunnelThreadData;
+
+        #endregion
+
+        #region Slot
+
+        [SerializeField] [FoldoutGroup("Slot")]
+        private SlotData m_SlotData;
+
+        public SlotData SlotData => m_SlotData;
+
+        #endregion
+
+        #region KnitData
+
+        [SerializeField] [FoldoutGroup("Knit")]
+        private List<GeneralColor> m_KnitColor;
+
+        public List<GeneralColor> KnitColor
+        {
+            get => m_KnitColor;
+            set => m_KnitColor = value;
+        }
+
+        #endregion
     }
 
     #endregion

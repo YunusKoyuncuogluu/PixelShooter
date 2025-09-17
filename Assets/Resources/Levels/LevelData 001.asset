@@ -38,7 +38,7 @@ MonoBehaviour:
       Data: false
     - Name: m_Direction
       Entry: 3
-      Data: 4
+      Data: 0
     - Name: m_QuestionThread
       Entry: 5
       Data: false
@@ -98,7 +98,7 @@ MonoBehaviour:
       Data: 0
     - Name: m_DirectionLevel
       Entry: 3
-      Data: 4
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -362,13 +362,13 @@ MonoBehaviour:
       Data: false
     - Name: m_Direction
       Entry: 3
-      Data: 2
+      Data: 0
     - Name: m_QuestionThread
       Entry: 5
       Data: false
     - Name: m_IsTunnelThread
       Entry: 5
-      Data: true
+      Data: false
     - Name: m_FacadeProperty
       Entry: 7
       Data: 14|FacadeProperty, Assembly-CSharp
@@ -413,7 +413,7 @@ MonoBehaviour:
       Data: 0
     - Name: m_DirectionLevel
       Entry: 3
-      Data: 2
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -1242,15 +1242,20 @@ MonoBehaviour:
   m_Height: 5
   m_CellDataDistance:
     m_IsLocked: 0
-    m_Direction: 2
+    m_Direction: 0
     m_QuestionThread: 0
-    m_IsTunnelThread: 1
+    m_IsTunnelThread: 0
     m_FacadeProperty:
-      m_Level: 0
-      m_Name: 
-      m_Color: {r: 0, g: 0, b: 0, a: 0}
+      m_Level: 1
+      m_Name: Red
+      m_Color: {r: 0.764151, g: 0, b: 0, a: 1}
       m_SplashMaterial: {fileID: 0}
       m_ThreadMaterials: []
       m_KnitMaterials: {fileID: 0}
     m_ColorLevel: 0
-    m_DirectionLevel: 2
+    m_DirectionLevel: 0
+  m_QuestionThreadData: []
+  m_TunnelThreadData: []
+  m_SlotData:
+    m_Count: 0
+  m_KnitColor: 
