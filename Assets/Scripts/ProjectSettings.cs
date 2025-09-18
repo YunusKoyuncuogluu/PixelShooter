@@ -49,4 +49,18 @@ public class ProjectSettings : ScriptableObject
     }
 
     #endregion
+
+    #region GameSettings
+
+    [SerializeField] [FoldoutGroup("Cell Settings")]
+    private float m_CellSpaceX;
+
+    public float CellSpaceX => m_CellSpaceX;
+
+    [SerializeField] [FoldoutGroup("Cell Settings")]
+    private float m_CellSpaceY;
+
+    public float CellSpaceY => m_CellSpaceY;
+
+    #endregion
 }

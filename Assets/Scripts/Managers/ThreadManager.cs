@@ -1,18 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
+using Zenject;
 
 public class ThreadManager : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    [Inject] private Thread.Factory m_ThreadFactory;
 
-    // Update is called once per frame
-    void Update()
+    [Button]
+    public void SpawnTest()
     {
-        
+        m_ThreadFactory.Create();
     }
 }
