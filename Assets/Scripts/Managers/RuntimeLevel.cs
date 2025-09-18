@@ -12,6 +12,7 @@ public class RuntimeLevel : IInitializable, IDisposable
 
     [Inject] LevelManager m_LevelManager;
     [Inject] CellManager m_CellManager;
+    [Inject] SlotManager m_SlotManager;
 
     public void Dispose()
     {
@@ -25,6 +26,9 @@ public class RuntimeLevel : IInitializable, IDisposable
         if (currentLevelData == null)
             Debug.Log("<color=red>Cannot find current level data!</color>");
 
+        Initialized?.Invoke(currentLevelData);
+        
         m_CellManager.Construct(levelData);
+        m_SlotManager.Construct(levelData);
     }
 }

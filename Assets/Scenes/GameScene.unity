@@ -352,6 +352,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 75.619, y: 0, z: 0}
+--- !u!1 &1492979618
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1492979620}
+  - component: {fileID: 1492979619}
+  m_Layer: 0
+  m_Name: SlotManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1492979619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492979618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ada50339f6022e34e8f5d35b1c6b2e0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SlotSpaceX: 1
+--- !u!4 &1492979620
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492979618}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 6}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1860309465
 GameObject:
   m_ObjectHideFlags: 0
@@ -646,9 +691,10 @@ MonoBehaviour:
   m_TunnelManager: {fileID: 0}
   m_CellManager: {fileID: 1948474376}
   m_PlayerController: {fileID: 0}
-  m_SlotManager: {fileID: 0}
+  m_SlotManager: {fileID: 1492979619}
   m_ThreadFactory: {fileID: 6897377722755030069, guid: 3f1f4a723f5507e49b9b2a768610652b, type: 3}
   m_CellFactory: {fileID: -2461563771424706952, guid: 96fb6143af4f9e145995f91762341105, type: 3}
+  m_SlotFactory: {fileID: 5990351794390491334, guid: 6bdfdb14d51322143bc8aa94a42eb54f, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -661,3 +707,4 @@ SceneRoots:
   - {fileID: 1860309466}
   - {fileID: 1882572304}
   - {fileID: 1960293617}
+  - {fileID: 1492979620}
