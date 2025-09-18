@@ -32,7 +32,8 @@ public class Cell : MonoBehaviour
     {
         m_IsLocked = isLocked;
         m_IsFull = isLocked || m_IsFull;
-        m_LockedTransform.gameObject.SetActive(!isLocked);
+        m_LockedTransform.gameObject.SetActive(isLocked);
+        m_CellVisual.gameObject.SetActive(!isLocked);
     }
 
     public void SetFull(bool isFull)

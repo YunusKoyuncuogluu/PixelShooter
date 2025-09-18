@@ -35,6 +35,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     public void InstallManagers()
     {
+        Container.BindInterfacesAndSelfTo<RuntimeLevel>().AsSingle();
         Container.BindInstance(m_ThreadManager).AsSingle();
         Container.BindInstance(m_CellManager).AsSingle();
     }
