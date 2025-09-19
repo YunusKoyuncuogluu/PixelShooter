@@ -120,6 +120,6 @@ public class PathFinding
     private Vector3 GetWorldPositionFromGridCoordinate(Vector2Int gridCoordinate)
     {
         Cell cell = m_Cells[gridCoordinate.x, gridCoordinate.y];
-        return cell.transform.position
+        return cell.transform.position;
     }
 }
