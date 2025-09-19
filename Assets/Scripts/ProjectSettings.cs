@@ -62,5 +62,14 @@ public class ProjectSettings : ScriptableObject
 
     public float CellSpaceY => m_CellSpaceY;
 
+    public float ThreadSpeed
+    {
+        get => m_ThreadSpeed;
+        set => m_ThreadSpeed = value;
+    }
+
+    [SerializeField] [FoldoutGroup("Thread Settings")]
+    private float m_ThreadSpeed;
+
     #endregion
 }
