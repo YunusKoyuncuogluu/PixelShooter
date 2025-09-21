@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using Grids;
 using JetBrains.Annotations;
 using LevelManagement;
@@ -19,8 +20,8 @@ public class ThreadManager : MonoBehaviour
 
     private int m_Width;
     private int m_Height;
-    private int m_SpaceX;
-    private int m_SpaceY;
+    private float m_SpaceX;
+    private float m_SpaceY;
 
     public int Width => m_Width;
     public int Height => m_Height;
@@ -29,10 +30,96 @@ public class ThreadManager : MonoBehaviour
     private List<Vector3> m_PositionList;
     private List<Vector2Int> m_CoordinateList;
 
-    private CellData m_CellData;
+    private CellData[,] m_CellData;
     private LevelData m_LevelData;
     private List<ThreadData> m_QuestionThreadData;
     private PathFinding m_PathFinding;
+
+    public void Construct(LevelData levelData)
+    {
+        m_LevelData = levelData;
+        m_CellData = m_CellManager.CellData;
+        m_QuestionThreadData = new List<ThreadData>(m_LevelData.QuestionThreadData);
+
+        InitializeGridPositioner();
+        CreateThreads();
+        ConstructClickableSausagesWithDelay();
+    }
+
+    private void InitializeGridPositioner()
+    {
+        m_Width = m_LevelData.Width;
+        m_Height = m_LevelData.Height;
+        m_SpaceX = m_ProjectSettings.CellSpaceX;
+        m_SpaceY = m_ProjectSettings.CellSpaceY;
+
+        m_CellPositioner = new CellPositioner(m_Width, m_Height, m_CellManager.CenterTransform, m_SpaceX, m_SpaceY);
+        m_PositionList = new List<Vector3>(m_CellPositioner.PositionList());
+        m_CoordinateList = new List<Vector2Int>(m_CellPositioner.CoordinateList());
+        m_Threads = new Thread[m_Width, m_Height];
+    }
+
+    private void CreateThreads()
+    {
+        for (int i = 0; i < m_PositionList.Count; i++)
+        {
+            CellData cellData = m_CellData[m_CoordinateList[i].x, m_CoordinateList[i].y];
+            if (!cellData.IsFull && !cellData.IsQuestionThread)
+                continue;
+
+            GeneralColor color = cellData.IsQuestionThread
+                ? m_QuestionThreadData[0].Color
+                : (GeneralColor)cellData.ColorLevel;
+
+            ThreadData threadData =
+                new ThreadData(color, cellData.IsQuestionThread, m_CoordinateList[i], m_PositionList[i]);
+
+            CreateThread(threadData);
+
+            if (cellData.IsQuestionThread)
+                m_QuestionThreadData.RemoveAt(0);
+        }
+    }
+
+    private void CreateThread(ThreadData threadData)
+    {
+        Thread thread = m_ThreadFactory.Create();
+        thread.transform.SetParent(transform);
+        thread.Construct(threadData);
+        Vector2Int threadCoordinate = threadData.Coordinate;
+        m_Threads[threadData.Coordinate.x, threadData.Coordinate.y] = thread;
+        m_CellManager.SetFull(threadCoordinate, true);
+    }
+
+    private async void ConstructClickableSausagesWithDelay()
+    {
+        await UniTask.DelayFrame(1);
+        ControlClickableSausages(0f);
+    }
+
+    public void ControlClickableSausages(float time)
+    {
+        m_PathFinding = new PathFinding(m_Width, m_Height, m_CellManager.Cells);
+
+        for (int i = 0; i < m_Height; i++)
+        {
+            for (int j = 0; j < m_Width; j++)
+            {
+                if (m_Threads[i, j] == null || m_Threads[i, j].IsTunnelThread)
+                    continue;
+
+                Thread thread = m_Threads[i, j];
+                Vector2Int coordinate = new Vector2Int(i, j);
+
+                List<Vector2Int> pathCoordinates = m_PathFinding.BreadthFirstSearch(coordinate, out bool isExitFound);
+
+                List<Vector3> path = m_PathFinding.PathConvert(pathCoordinates);
+
+                thread.SetClickable(isExitFound);
+                thread.ClickableProcess(path, time);
+            }
+        }
+    }
 
     public void RemoveThread(Vector2Int coordinate) => m_Threads[coordinate.x, coordinate.y] = null;
 }

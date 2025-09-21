@@ -52,7 +52,7 @@ public class Thread : MonoBehaviour
         m_Transform = transform;
         m_ThreadData = threadData;
         m_Transform.position = m_ThreadData.Position;
-        m_Coordinate = m_ThreadData.Cordinate;
+        m_Coordinate = m_ThreadData.Coordinate;
         m_Color = threadData.Color;
         m_ColorLevel = (int)m_Color - 1;
         m_IsQuestionThread = threadData.IsQuestionThread;

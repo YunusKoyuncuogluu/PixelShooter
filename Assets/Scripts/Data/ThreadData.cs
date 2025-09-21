@@ -8,8 +8,8 @@ public class ThreadData
     public GeneralColor Color => m_Color;
     private bool m_IsQuestionThread;
     public bool IsQuestionThread => m_IsQuestionThread;
-    private Vector2Int m_Cordinate;
-    public Vector2Int Cordinate => m_Cordinate;
+    private Vector2Int m_Coordinate;
+    public Vector2Int Coordinate => m_Coordinate;
     private Vector3 m_Position;
     public Vector3 Position => m_Position;
 
@@ -17,7 +17,7 @@ public class ThreadData
     {
         m_Color = color;
         m_IsQuestionThread = isQuestionThread;
-        m_Cordinate = cordinate;
+        m_Coordinate = cordinate;
         m_Position = position;
     }
 }

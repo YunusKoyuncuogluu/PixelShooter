@@ -48,7 +48,12 @@ namespace Grids
         public int ColorLevel
         {
             get => m_ColorLevel;
-            set => m_ColorLevel = value;
+            set
+            {
+                if (value > GetFacadePropertyCount())
+                    return;
+                m_ColorLevel = value;
+            }
         }
 
         public int TunnelIndex

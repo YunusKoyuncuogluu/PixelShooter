@@ -56,15 +56,18 @@ namespace LevelManagement
             {
                 s_Instance.m_CellDataDistance.ColorLevel = Event.current.keyCode switch
                 {
-                    KeyCode.Alpha1 or KeyCode.Keypad1 => 1,
-                    KeyCode.Alpha2 or KeyCode.Keypad2 => 2,
-                    KeyCode.Alpha3 or KeyCode.Keypad3 => 3,
-                    KeyCode.Alpha4 or KeyCode.Keypad4 => 4,
-                    KeyCode.Alpha5 or KeyCode.Keypad5 => 5,
-                    KeyCode.Alpha6 or KeyCode.Keypad6 => 6,
-                    KeyCode.Alpha7 or KeyCode.Keypad7 => 7,
+                    KeyCode.Alpha1 or KeyCode.Keypad1 => Event.current.shift ? 11 : 1,
+                    KeyCode.Alpha2 or KeyCode.Keypad2 => Event.current.shift ? 12 : 2,
+                    KeyCode.Alpha3 or KeyCode.Keypad3 => Event.current.shift ? 13 : 3,
+                    KeyCode.Alpha4 or KeyCode.Keypad4 => Event.current.shift ? 14 : 4,
+                    KeyCode.Alpha5 or KeyCode.Keypad5 => Event.current.shift ? 15 : 5,
+                    KeyCode.Alpha6 or KeyCode.Keypad6 => Event.current.shift ? 16 : 6,
+                    KeyCode.Alpha7 or KeyCode.Keypad7 => Event.current.shift ? 17 : 7,
+                    KeyCode.Alpha8 or KeyCode.Keypad8 => Event.current.shift ? 18 : 8,
+                    KeyCode.Alpha9 or KeyCode.Keypad9 => Event.current.shift ? 19 : 9,
                     _ => s_Instance.m_CellDataDistance.ColorLevel
                 };
+
                 s_Instance.m_CellDataDistance.OnColorLevelChanged();
             }
 
@@ -221,6 +224,8 @@ namespace LevelManagement
 
 #if UNITY_EDITOR
             EditorGUI.DrawRect(rect.Padding(1), element.FacadeProperty.Color);
+            if (ReferenceEquals(element, s_Instance.m_CellDataDistance))
+                DrawOutline(rect, Color.magenta, 4);
 #endif
             SetTextProperties();
 

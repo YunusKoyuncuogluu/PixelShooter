@@ -13,6 +13,7 @@ public class RuntimeLevel : IInitializable, IDisposable
     [Inject] LevelManager m_LevelManager;
     [Inject] CellManager m_CellManager;
     [Inject] SlotManager m_SlotManager;
+    [Inject] ThreadManager m_ThreadManager;
 
     public void Dispose()
     {
@@ -30,5 +31,6 @@ public class RuntimeLevel : IInitializable, IDisposable
         
         m_CellManager.Construct(levelData);
         m_SlotManager.Construct(levelData);
+        m_ThreadManager.Construct(levelData);
     }
 }
