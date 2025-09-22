@@ -25,11 +25,20 @@ public class ThreadData
 public enum GeneralColor
 {
     None,
+    Red,
+    Yellow,
     Blue,
-    Green,
     Orange,
+    Aqua,
+    Brown,
+    Gray,
+    Green,
+    LightGreen,
+    Null,
+    Lilac,
     Pink,
     Purple,
-    Red,
-    Yellow
+    White,
+    WoodenColor,
+    
 }
