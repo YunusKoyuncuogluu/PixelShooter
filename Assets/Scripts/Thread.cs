@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Dreamteck.Splines;
 using UnityEngine;
 using Zenject;
 
@@ -46,8 +47,6 @@ public class Thread : MonoBehaviour
 
     private int m_ColorLevel;
     public int ColorLevel => m_ColorLevel;
-
-    private Sequence m_PlacementSlotSequence;
 
     public void Construct(ThreadData threadData)
     {
@@ -118,16 +117,11 @@ public class Thread : MonoBehaviour
     public void PlacementSlotAnimation(Slot slot)
     {
         m_MySlot = slot;
-        m_PlacementSlotSequence?.Kill();
-        m_PlacementSlotSequence = DOTween.Sequence();
-        m_Transform.DOMoveX(m_MySlot.transform.position.x, 0.3f).SetEase(Ease.Linear);
-        m_Transform.DOMoveY(m_MySlot.transform.position.y + 2f, 0.15f)
-            .SetEase(Ease.Linear).OnComplete(() =>
-            {
-                m_Transform.DOMoveY(m_MySlot.transform.position.y, 0.15f).SetEase(Ease.Linear);
-            });
-        m_Transform.DOMoveZ(m_MySlot.transform.position.z, 0.3f).SetEase(Ease.Linear);
-        //m_PlacementSlotSequence.Append(m_Transform.DOMove(m_MySlot.transform.position, 0.3f).SetEase(Ease.Linear));
+        transform.gameObject.FollowTo(m_MySlot.transform, m_Speed, onComplete: () =>
+        {
+            Debug.Log("Spline End");
+        });
+
     }
 
     public class Factory : PlaceholderFactory<Thread>
