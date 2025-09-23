@@ -20,16 +20,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
     - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
-    - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
-    - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 2
     m_Name: Yellow
     m_Color: {r: 0.7921569, g: 0.7058824, b: 0.30588236, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
-    - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -40,16 +36,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
     - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
-    - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
-    - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 4
     m_Name: Orange
     m_Color: {r: 0.87058824, g: 0.42352942, b: 0.23529412, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -60,16 +52,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
     - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-    - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-    - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 6
     m_Name: Brown
     m_Color: {r: 0.5176471, g: 0.21176471, b: 0, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
-    - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -80,8 +68,6 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
     - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
-    - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
-    - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 8
     m_Name: Green
@@ -90,16 +76,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
     - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
-    - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
-    - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 9
     m_Name: LightGreen
     m_Color: {r: 0.5137255, g: 0.7411765, b: 0.18039216, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
-    - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -116,16 +98,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
     - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
-    - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
-    - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 12
     m_Name: Pink
     m_Color: {r: 0.8627451, g: 0.5411765, b: 0.7921569, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
-    - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -136,8 +114,6 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 14
     m_Name: White
@@ -146,16 +122,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
     - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
-    - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
-    - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 15
     m_Name: WoodenColor
     m_Color: {r: 0.7254902, g: 0.5137255, b: 0.3254902, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
-    - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -167,16 +139,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
     - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
-    - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
-    - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 2
     m_Name: Yellow
     m_Color: {r: 0.7921569, g: 0.7058824, b: 0.30588236, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
-    - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     - {fileID: 2100000, guid: 4b3e75ebb52563f4c8f0cc8eacacc214, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -187,16 +155,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
     - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
-    - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
-    - {fileID: 2100000, guid: d234b6a5d78ebc14b8aaa43827e26203, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 4
     m_Name: Orange
     m_Color: {r: 0.87058824, g: 0.42352942, b: 0.23529412, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -207,16 +171,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
     - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-    - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-    - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 6
     m_Name: Brown
     m_Color: {r: 0.5176471, g: 0.21176471, b: 0, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
-    - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -227,8 +187,6 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
     - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
-    - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
-    - {fileID: 2100000, guid: 03bd226e40936654f94d04cbbdfd1bfd, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 8
     m_Name: Green
@@ -237,16 +195,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
     - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
-    - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
-    - {fileID: 2100000, guid: fbd259f1cdab8d641a7d74182a38464f, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 9
     m_Name: LightGreen
     m_Color: {r: 0.5137255, g: 0.7411765, b: 0.18039216, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
-    - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -263,16 +217,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
     - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
-    - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
-    - {fileID: 2100000, guid: 078ea4e152365c94ea9a0b92effe971c, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 12
     m_Name: Pink
     m_Color: {r: 0.8627451, g: 0.5411765, b: 0.7921569, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
-    - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
     m_KnitMaterials: {fileID: 0}
@@ -283,8 +233,6 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 14
     m_Name: White
@@ -293,16 +241,12 @@ MonoBehaviour:
     m_ThreadMaterials:
     - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
     - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
-    - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
-    - {fileID: 2100000, guid: f9b47f27324c0a84492339ae47cf5d2b, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 15
     m_Name: WoodenColor
     m_Color: {r: 0.7254902, g: 0.5137255, b: 0.3254902, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
-    - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
     m_KnitMaterials: {fileID: 0}

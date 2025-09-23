@@ -575,7 +575,7 @@ MonoBehaviour:
       Data: 0
     - Name: m_QuestionThread
       Entry: 5
-      Data: false
+      Data: true
     - Name: m_IsTunnelThread
       Entry: 5
       Data: false
@@ -3301,22 +3301,19 @@ MonoBehaviour:
   m_CellDataDistance:
     m_IsLocked: 0
     m_Direction: 0
-    m_QuestionThread: 0
+    m_QuestionThread: 1
     m_IsTunnelThread: 0
     m_FacadeProperty:
-      m_Level: 5
-      m_Name: Aqua
-      m_Color: {r: 0.14509805, g: 0.7137255, b: 0.99215686, a: 1}
+      m_Level: 4
+      m_Name: Orange
+      m_Color: {r: 0.8584906, g: 0.35771358, b: 0, a: 1}
       m_SplashMaterial: {fileID: 0}
-      m_ThreadMaterials:
-      - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-      - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-      - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
-      - {fileID: 2100000, guid: 1120fcbdacf669e4a81994f15ddd408e, type: 2}
+      m_ThreadMaterials: []
       m_KnitMaterials: {fileID: 0}
-    m_ColorLevel: 5
+    m_ColorLevel: 0
     m_DirectionLevel: 0
-  m_QuestionThreadData: []
+  m_QuestionThreadData:
+  - m_Color: 13
   m_TunnelThreadData: []
   m_SlotData:
     m_Count: 1

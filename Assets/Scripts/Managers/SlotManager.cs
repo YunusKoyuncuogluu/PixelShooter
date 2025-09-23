@@ -40,6 +40,15 @@ public class SlotManager : MonoBehaviour
         CreateSlot();
     }
 
+    private void Update()
+    {
+        if (m_WaitingThreads.Count > 0)
+        {
+            PlacementThread(m_WaitingThreads[0]);
+            m_WaitingThreads.RemoveAt(0);
+        }
+    }
+
     public void CreateSlot()
     {
         m_Slots = new List<Slot>();
@@ -110,6 +119,30 @@ public class SlotManager : MonoBehaviour
             default:
                 break;
         }
+    }
+
+    private Slot GetAvailableSlot()
+    {
+        Slot slot = m_Slots.Find(s => s.IsLocked == false && s.IsFull == false);
+        return slot;
+    }
+
+    private void PlacementThread(Thread thread)
+    {
+        Slot slot = GetAvailableSlot();
+
+        if (slot != null)
+        {
+            if (m_Threads.Count < m_Slots.Count)
+                m_Threads.Add(thread);
+            thread.PlacementSlotAnimation(slot);
+            slot.SetFull(true);
+        }
+    }
+
+    public void SaveThread(Thread thread)
+    {
+        m_WaitingThreads.Add(thread);
     }
 }
 

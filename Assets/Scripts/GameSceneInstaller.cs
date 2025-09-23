@@ -16,10 +16,11 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
     private CellManager m_CellManager;
 
     [SerializeField] [FoldoutGroup("Managers")]
-    private PlayerController m_PlayerController;
+    private Game.PlayerController m_PlayerController;
 
     [SerializeField] [FoldoutGroup("Managers")]
     private SlotManager m_SlotManager;
+
 
 
     [SerializeField] [FoldoutGroup("Prefabs")]
@@ -43,6 +44,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindInstance(m_ThreadManager).AsSingle();
         Container.BindInstance(m_CellManager).AsSingle();
         Container.BindInstance(m_SlotManager).AsSingle();
+        Container.BindInstance(m_PlayerController).AsSingle();
     }
 
     public void InstallInstances()

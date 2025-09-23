@@ -94,10 +94,10 @@ public class ThreadManager : MonoBehaviour
     private async void ConstructClickableSausagesWithDelay()
     {
         await UniTask.DelayFrame(1);
-        ControlClickableSausages(0f);
+        ControlClickableSausages();
     }
 
-    public void ControlClickableSausages(float time)
+    public void ControlClickableSausages()
     {
         m_PathFinding = new PathFinding(m_Width, m_Height, m_CellManager.Cells);
 
@@ -116,7 +116,7 @@ public class ThreadManager : MonoBehaviour
                 List<Vector3> path = m_PathFinding.PathConvert(pathCoordinates);
 
                 thread.SetClickable(isExitFound);
-                thread.ClickableProcess(path, time);
+                thread.ClickableProcess(path);
             }
         }
     }

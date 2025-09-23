@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using UnityEngine;
 using Zenject;
 
@@ -42,7 +43,11 @@ public class Thread : MonoBehaviour
     private Transform m_Transform;
     private List<Vector3> m_Path;
     private float m_Speed;
+
     private int m_ColorLevel;
+    public int ColorLevel => m_ColorLevel;
+
+    private Sequence m_PlacementSlotSequence;
 
     public void Construct(ThreadData threadData)
     {
@@ -71,7 +76,7 @@ public class Thread : MonoBehaviour
 
         m_QuestionMaterial = new Material(m_QuestionMaterial);
         m_QuestionDarkMaterial = new Material(m_QuestionDarkMaterial);
-        m_QuestionMaterials = new[] { m_QuestionMaterial, m_QuestionDarkMaterial, m_Materials[2], m_Materials[3] };
+        m_QuestionMaterials = new[] { m_QuestionMaterial, m_QuestionDarkMaterial };
 
         SetMaterial(m_IsQuestionThread);
     }
@@ -83,16 +88,17 @@ public class Thread : MonoBehaviour
 
     public void SetCoordinate(Vector2Int cordinate) => m_Coordinate = cordinate;
 
-    public void SetOutline(bool open) => m_Materials[0].SetFloat("_OutlineWidth", open ? 5f : 0f);
+    public void SetOutline(bool open) => m_Materials[0].SetFloat("_OutlineWidth", open ? 1f : 0f);
 
-    public void ClickableProcess(List<Vector3> path, float animationTime)
+    public void ClickableProcess(List<Vector3> path, bool isControlUser = false)
     {
+        SetOutline(IsClickable);
         if (!m_IsClickable)
         {
             return;
         }
 
-        if (m_IsQuestionThread)
+        if (m_IsQuestionThread && isControlUser)
         {
             m_IsQuestionThread = false;
             m_QuestionMark.gameObject.SetActive(false);
@@ -106,33 +112,23 @@ public class Thread : MonoBehaviour
     {
         m_IsClickable = false;
         m_ThreadManager.RemoveThread(m_Coordinate);
-        ExitGrid().Forget();
+        m_SlotManager.SaveThread(this);
     }
 
-    private async UniTask ExitGrid()
+    public void PlacementSlotAnimation(Slot slot)
     {
-        bool isArrived = false;
-        int pathIndex = 0;
-
-        while (!isArrived)
-        {
-            if (pathIndex < m_Path.Count)
+        m_MySlot = slot;
+        m_PlacementSlotSequence?.Kill();
+        m_PlacementSlotSequence = DOTween.Sequence();
+        m_Transform.DOMoveX(m_MySlot.transform.position.x, 0.3f).SetEase(Ease.Linear);
+        m_Transform.DOMoveY(m_MySlot.transform.position.y + 2f, 0.15f)
+            .SetEase(Ease.Linear).OnComplete(() =>
             {
-                Vector3 targetPoint = m_Path[pathIndex];
-                //Rotate TO DO
-                Vector3 nextPosition = Vector3.MoveTowards(transform.position, targetPoint, m_Speed * Time.deltaTime);
-                m_Transform.position = nextPosition;
-
-                if ((nextPosition - targetPoint).sqrMagnitude <= 0.02f)
-                    pathIndex++;
-            }
-            else
-                isArrived = true;
-
-            await UniTask.Yield(PlayerLoopTiming.Update, m_mMoveCTS.Token);
-        }
+                m_Transform.DOMoveY(m_MySlot.transform.position.y, 0.15f).SetEase(Ease.Linear);
+            });
+        m_Transform.DOMoveZ(m_MySlot.transform.position.z, 0.3f).SetEase(Ease.Linear);
+        //m_PlacementSlotSequence.Append(m_Transform.DOMove(m_MySlot.transform.position, 0.3f).SetEase(Ease.Linear));
     }
-
 
     public class Factory : PlaceholderFactory<Thread>
     {
