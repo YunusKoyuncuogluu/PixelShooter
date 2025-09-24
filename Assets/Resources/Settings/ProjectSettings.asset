@@ -42,8 +42,8 @@ MonoBehaviour:
     m_Color: {r: 0.87058824, g: 0.42352942, b: 0.23529412, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
+    - {fileID: 2100000, guid: 4080b4f683abc3a4399281ab7a8da9f2, type: 2}
+    - {fileID: 2100000, guid: 4080b4f683abc3a4399281ab7a8da9f2, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 5
     m_Name: Aqua
@@ -161,8 +161,8 @@ MonoBehaviour:
     m_Color: {r: 0.87058824, g: 0.42352942, b: 0.23529412, a: 1}
     m_SplashMaterial: {fileID: 0}
     m_ThreadMaterials:
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
-    - {fileID: 2100000, guid: 1f2969e98ecb86e45a1aece321eb4ecd, type: 2}
+    - {fileID: 2100000, guid: 4080b4f683abc3a4399281ab7a8da9f2, type: 2}
+    - {fileID: 2100000, guid: 4080b4f683abc3a4399281ab7a8da9f2, type: 2}
     m_KnitMaterials: {fileID: 0}
   - m_Level: 5
     m_Name: Aqua
@@ -252,4 +252,5 @@ MonoBehaviour:
     m_KnitMaterials: {fileID: 0}
   m_CellSpaceX: 0
   m_CellSpaceY: 0
-  m_ThreadSpeed: 10
+  m_ThreadSpeed: 30
+  m_ThreadRotateSpeed: 300

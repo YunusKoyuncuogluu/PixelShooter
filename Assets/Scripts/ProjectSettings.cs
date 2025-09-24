@@ -68,8 +68,17 @@ public class ProjectSettings : ScriptableObject
         set => m_ThreadSpeed = value;
     }
 
+    public float ThreadRotateSpeed
+    {
+        get => m_ThreadRotateSpeed;
+        set => m_ThreadRotateSpeed = value;
+    }
+
     [SerializeField] [FoldoutGroup("Thread Settings")]
     private float m_ThreadSpeed;
+
+    [SerializeField] [FoldoutGroup("Cell Settings")]
+    private float m_ThreadRotateSpeed;
 
     #endregion
 }

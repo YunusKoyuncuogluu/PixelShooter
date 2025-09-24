@@ -63,7 +63,9 @@ public class PathFinding
             {
                 Vector2Int next = current + dir;
                 if (next.x >= 0 && next.x < m_Width && next.y >= 0 && next.y < m_Height &&
-                    !m_Cells[next.x, next.y].IsFull && !m_Cells[next.x, next.y].IsLoccked && !visited[next.x, next.y])
+                    !m_Cells[next.x, next.y].IsFull &&
+                    !m_Cells[next.x, next.y].IsLoccked &&
+                    !visited[next.x, next.y])
                 {
                     queue.Enqueue(next);
                     visited[next.x, next.y] = true;

@@ -178,16 +178,16 @@ namespace LevelManagement
                     switch (element.Direction)
                     {
                         case Direction.Left:
-                            directionText = "←←←" + " T" + element.TunnelIndex;
+                            directionText = "←" + " T" + element.TunnelIndex;
                             break;
                         case Direction.Right:
-                            directionText = "→→→" + " T" + element.TunnelIndex;
+                            directionText = "→" + " T" + element.TunnelIndex;
                             break;
                         case Direction.Up:
-                            directionText = "↑↑↑" + " T" + element.TunnelIndex;
+                            directionText = "↑" + " T" + element.TunnelIndex;
                             break;
                         case Direction.Down:
-                            directionText = "↓↓↓" + " T" + element.TunnelIndex;
+                            directionText = "↓" + " T" + element.TunnelIndex;
                             break;
                         default:
                             directionText = "NULL" + " T" + element.TunnelIndex;

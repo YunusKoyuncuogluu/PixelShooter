@@ -4419,6 +4419,51 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1076121109}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1077478319
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1077478321}
+  - component: {fileID: 1077478320}
+  m_Layer: 0
+  m_Name: TunnelManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1077478320
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1077478319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 107320e6652cfb642983d0172a29b190, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_CenterTransform: {fileID: 1882572304}
+--- !u!4 &1077478321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1077478319}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1086471787
 GameObject:
   m_ObjectHideFlags: 0
@@ -8538,13 +8583,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ThreadManager: {fileID: 541806547}
-  m_TunnelManager: {fileID: 0}
+  m_TunnelManager: {fileID: 1077478320}
   m_CellManager: {fileID: 1948474376}
   m_PlayerController: {fileID: 1857963514}
   m_SlotManager: {fileID: 1492979619}
   m_ThreadFactory: {fileID: 1021720324024268722, guid: 06d8af3d8b1a318418a21ca023e00737, type: 3}
   m_CellFactory: {fileID: -2461563771424706952, guid: 96fb6143af4f9e145995f91762341105, type: 3}
   m_SlotFactory: {fileID: 5990351794390491334, guid: 6bdfdb14d51322143bc8aa94a42eb54f, type: 3}
+  m_TunnelFactory: {fileID: 7036010414862031397, guid: e6452b789857a4e4084bc89958e3b1c0, type: 3}
 --- !u!1 &1995029447
 GameObject:
   m_ObjectHideFlags: 0
@@ -9271,5 +9317,6 @@ SceneRoots:
   - {fileID: 1882572304}
   - {fileID: 1960293617}
   - {fileID: 1492979620}
+  - {fileID: 1077478321}
   - {fileID: 541806548}
   - {fileID: 2009832850}

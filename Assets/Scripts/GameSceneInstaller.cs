@@ -22,7 +22,6 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
     private SlotManager m_SlotManager;
 
 
-
     [SerializeField] [FoldoutGroup("Prefabs")]
     private Thread m_ThreadFactory;
 
@@ -31,6 +30,9 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     [SerializeField] [FoldoutGroup("Prefabs")]
     private Slot m_SlotFactory;
+
+    [SerializeField] [FoldoutGroup("Prefabs")]
+    private Tunnel m_TunnelFactory;
 
     public override void InstallBindings()
     {
@@ -45,6 +47,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindInstance(m_CellManager).AsSingle();
         Container.BindInstance(m_SlotManager).AsSingle();
         Container.BindInstance(m_PlayerController).AsSingle();
+        Container.BindInstance(m_TunnelManager).AsSingle();
     }
 
     public void InstallInstances()
@@ -52,5 +55,6 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindFactory<Cell, Cell.Factory>().FromComponentInNewPrefab(m_CellFactory);
         Container.BindFactory<Thread, Thread.Factory>().FromComponentInNewPrefab(m_ThreadFactory);
         Container.BindFactory<Slot, Slot.Factory>().FromComponentInNewPrefab(m_SlotFactory);
+        Container.BindFactory<Tunnel, Tunnel.Factory>().FromComponentInNewPrefab(m_TunnelFactory);
     }
 }

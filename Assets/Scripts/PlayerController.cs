@@ -14,7 +14,7 @@ namespace Game
 
         [Inject] ThreadManager m_ThreadManager;
 
-        //[Inject] TunnelManager m_TunnelManager;
+        [Inject] TunnelManager m_TunnelManager;
         [Inject] LevelManager m_LevelManager;
 
         private RaycastHit[] m_Hits;
@@ -47,8 +47,8 @@ namespace Game
                 {
                     m_CurrentThread.OnClick();
                     m_CellManager.SetFull(m_CurrentThread.Coordinate, false);
-                    // m_TunnelManager
-                    m_ThreadManager.ControlClickableSausages();
+                    m_TunnelManager.ControlTunnel();
+                    m_ThreadManager.ControlClickableThreads();
                 }
             }
         }

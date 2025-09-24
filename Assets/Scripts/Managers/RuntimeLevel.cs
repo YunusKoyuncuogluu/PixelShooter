@@ -14,6 +14,7 @@ public class RuntimeLevel : IInitializable, IDisposable
     [Inject] CellManager m_CellManager;
     [Inject] SlotManager m_SlotManager;
     [Inject] ThreadManager m_ThreadManager;
+    [Inject] TunnelManager m_TunnelManager;
     [Inject] Game.PlayerController m_PlayerController;
 
     public void Dispose()
@@ -33,6 +34,7 @@ public class RuntimeLevel : IInitializable, IDisposable
         m_CellManager.Construct(levelData);
         m_SlotManager.Construct(levelData);
         m_ThreadManager.Construct(levelData);
+        m_TunnelManager.Construct(levelData);
         m_PlayerController.Construct();
     }
 }

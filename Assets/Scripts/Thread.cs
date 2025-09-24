@@ -6,6 +6,7 @@ using DG.Tweening;
 using Dreamteck.Splines;
 using UnityEngine;
 using Zenject;
+using Vector3 = UnityEngine.Vector3;
 
 public class Thread : MonoBehaviour
 {
@@ -44,15 +45,20 @@ public class Thread : MonoBehaviour
     private Transform m_Transform;
     private List<Vector3> m_Path;
     private float m_Speed;
+    private float m_RotateSpeed;
 
     private int m_ColorLevel;
     public int ColorLevel => m_ColorLevel;
+
+    private Sequence m_scaleSequence;
+
 
     public void Construct(ThreadData threadData)
     {
         m_mMoveCTS = new CancellationTokenSource();
 
         m_Speed = m_ProjectSettings.ThreadSpeed;
+        m_RotateSpeed = m_ProjectSettings.ThreadRotateSpeed;
         m_Transform = transform;
         m_ThreadData = threadData;
         m_Transform.position = m_ThreadData.Position;
@@ -85,11 +91,13 @@ public class Thread : MonoBehaviour
 
     public void SetClickable(bool isClickable) => m_IsClickable = isClickable;
 
+    public void SetTunnelThread(bool isTunnelThread) => m_IsTunnelThread = isTunnelThread;
+
     public void SetCoordinate(Vector2Int cordinate) => m_Coordinate = cordinate;
 
     public void SetOutline(bool open) => m_Materials[0].SetFloat("_OutlineWidth", open ? 1f : 0f);
 
-    public void ClickableProcess(List<Vector3> path, bool isControlUser = false)
+    public void ClickableProcess(List<Vector3> path)
     {
         SetOutline(IsClickable);
         if (!m_IsClickable)
@@ -97,10 +105,10 @@ public class Thread : MonoBehaviour
             return;
         }
 
-        if (m_IsQuestionThread && isControlUser)
+        if (m_IsQuestionThread)
         {
             m_IsQuestionThread = false;
-            m_QuestionMark.gameObject.SetActive(false);
+            m_QuestionMark.gameObject.SetActive(m_IsQuestionThread);
             SetMaterial(false);
         }
 
@@ -117,11 +125,20 @@ public class Thread : MonoBehaviour
     public void PlacementSlotAnimation(Slot slot)
     {
         m_MySlot = slot;
-        transform.gameObject.FollowTo(m_MySlot.transform, m_Speed, onComplete: () =>
-        {
-            Debug.Log("Spline End");
-        });
 
+        transform.gameObject.FollowTo(m_MySlot.transform, m_Speed,
+            onComplete: () =>
+            {
+                Debug.Log("Spline End");
+                m_scaleSequence?.Kill();
+                m_scaleSequence = DOTween.Sequence();
+                m_scaleSequence.Append(m_Transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
+                m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
+                m_scaleSequence.Append(m_Transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
+                m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
+            },
+            onUpdate:
+            (progress) => { transform.eulerAngles = Vector3.Lerp(Vector3.zero, new Vector3(90f, 90f, 0f), progress); });
     }
 
     public class Factory : PlaceholderFactory<Thread>

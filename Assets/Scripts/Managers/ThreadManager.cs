@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
@@ -44,6 +45,14 @@ public class ThreadManager : MonoBehaviour
         InitializeGridPositioner();
         CreateThreads();
         ConstructClickableSausagesWithDelay();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            ControlClickableThreads();
+        }
     }
 
     private void InitializeGridPositioner()
@@ -94,10 +103,27 @@ public class ThreadManager : MonoBehaviour
     private async void ConstructClickableSausagesWithDelay()
     {
         await UniTask.DelayFrame(1);
-        ControlClickableSausages();
+        ControlClickableThreads();
     }
 
-    public void ControlClickableSausages()
+    public Thread CreateTunnelThread(GeneralColor color, Vector2Int coordinate)
+    {
+        Vector3 threadPosition = m_PositionList[m_CoordinateList.IndexOf(coordinate)];
+        
+        ThreadData threadData = new ThreadData(color, false, coordinate, threadPosition);
+        return CreateThreadForTunnel(threadData);
+    }
+
+    private Thread CreateThreadForTunnel(ThreadData threadData)
+    {
+        Thread thread = m_ThreadFactory.Create();
+        thread.transform.SetParent(transform);
+        thread.Construct(threadData);
+        m_Threads[thread.Coordinate.x, thread.Coordinate.y] = thread;
+        return thread;
+    }
+
+    public void ControlClickableThreads()
     {
         m_PathFinding = new PathFinding(m_Width, m_Height, m_CellManager.Cells);
 
@@ -115,11 +141,16 @@ public class ThreadManager : MonoBehaviour
 
                 List<Vector3> path = m_PathFinding.PathConvert(pathCoordinates);
 
+                //Temp Path
+
                 thread.SetClickable(isExitFound);
                 thread.ClickableProcess(path);
             }
         }
     }
+
+    public void SetNewThread(Thread thread, Vector2Int exitCoordinate) =>
+        m_Threads[exitCoordinate.x, exitCoordinate.y] = thread;
 
     public void RemoveThread(Vector2Int coordinate) => m_Threads[coordinate.x, coordinate.y] = null;
 }
