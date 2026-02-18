@@ -16,12 +16,8 @@ MonoBehaviour:
     SerializedFormat: 2
     SerializedBytes: 
     ReferencedUnityObjects:
-    - {fileID: 0}
     - {fileID: 2100000, guid: 7f880b9dd0e6dcc4ba4030efd9e52a56, type: 2}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 2100000, guid: f94cae419f247374eac31bb1290f7fc3, type: 2}
-    - {fileID: 0}
+    - {fileID: 2100000, guid: 381ca84bc3cd35d498d101ff06345af0, type: 2}
     SerializedBytesString: 
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
@@ -176,33 +172,6 @@ MonoBehaviour:
       Data: 6|Grids.CellData, Assembly-CSharp
     - Name: m_IsLocked
       Entry: 5
-      Data: true
-    - Name: m_Direction
-      Entry: 3
-      Data: 0
-    - Name: m_QuestionThread
-      Entry: 5
-      Data: false
-    - Name: m_IsTunnelThread
-      Entry: 5
-      Data: false
-    - Name: m_FacadeProperty
-      Entry: 6
-      Data: 
-    - Name: m_ColorLevel
-      Entry: 3
-      Data: 0
-    - Name: m_DirectionLevel
-      Entry: 3
-      Data: 0
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 7|Grids.CellData, Assembly-CSharp
-    - Name: m_IsLocked
-      Entry: 5
       Data: false
     - Name: m_Direction
       Entry: 3
@@ -215,7 +184,7 @@ MonoBehaviour:
       Data: false
     - Name: m_FacadeProperty
       Entry: 7
-      Data: 8|FacadeProperty, Assembly-CSharp
+      Data: 7|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
       Data: 12
@@ -241,20 +210,20 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 0
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 7
-      Data: 9|UnityEngine.Material[], UnityEngine.CoreModule
+      Data: 8|UnityEngine.Material[], UnityEngine.CoreModule
     - Name: 
       Entry: 12
       Data: 2
     - Name: 
       Entry: 10
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 10
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 13
       Data: 
@@ -262,14 +231,41 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 2
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
     - Name: m_ColorLevel
       Entry: 3
       Data: 12
+    - Name: m_DirectionLevel
+      Entry: 3
+      Data: 0
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 9|Grids.CellData, Assembly-CSharp
+    - Name: m_IsLocked
+      Entry: 5
+      Data: false
+    - Name: m_Direction
+      Entry: 3
+      Data: 0
+    - Name: m_QuestionThread
+      Entry: 5
+      Data: false
+    - Name: m_IsTunnelThread
+      Entry: 5
+      Data: false
+    - Name: m_FacadeProperty
+      Entry: 6
+      Data: 
+    - Name: m_ColorLevel
+      Entry: 3
+      Data: 0
     - Name: m_DirectionLevel
       Entry: 3
       Data: 0
@@ -335,84 +331,6 @@ MonoBehaviour:
       Data: 12|Grids.CellData, Assembly-CSharp
     - Name: m_IsLocked
       Entry: 5
-      Data: false
-    - Name: m_Direction
-      Entry: 3
-      Data: 0
-    - Name: m_QuestionThread
-      Entry: 5
-      Data: false
-    - Name: m_IsTunnelThread
-      Entry: 5
-      Data: false
-    - Name: m_FacadeProperty
-      Entry: 7
-      Data: 13|FacadeProperty, Assembly-CSharp
-    - Name: m_Level
-      Entry: 3
-      Data: 6
-    - Name: m_Name
-      Entry: 1
-      Data: Brown
-    - Name: m_Color
-      Entry: 7
-      Data: UnityEngine.Color, UnityEngine.CoreModule
-    - Name: 
-      Entry: 4
-      Data: 0.5176471
-    - Name: 
-      Entry: 4
-      Data: 0.211764708
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 1
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: m_SplashMaterial
-      Entry: 10
-      Data: 3
-    - Name: m_ThreadMaterials
-      Entry: 7
-      Data: 14|UnityEngine.Material[], UnityEngine.CoreModule
-    - Name: 
-      Entry: 12
-      Data: 2
-    - Name: 
-      Entry: 10
-      Data: 4
-    - Name: 
-      Entry: 10
-      Data: 4
-    - Name: 
-      Entry: 13
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: m_KnitMaterials
-      Entry: 10
-      Data: 5
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: m_ColorLevel
-      Entry: 3
-      Data: 6
-    - Name: m_DirectionLevel
-      Entry: 3
-      Data: 0
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 15|Grids.CellData, Assembly-CSharp
-    - Name: m_IsLocked
-      Entry: 5
       Data: true
     - Name: m_Direction
       Entry: 3
@@ -429,6 +347,84 @@ MonoBehaviour:
     - Name: m_ColorLevel
       Entry: 3
       Data: 0
+    - Name: m_DirectionLevel
+      Entry: 3
+      Data: 0
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 13|Grids.CellData, Assembly-CSharp
+    - Name: m_IsLocked
+      Entry: 5
+      Data: false
+    - Name: m_Direction
+      Entry: 3
+      Data: 0
+    - Name: m_QuestionThread
+      Entry: 5
+      Data: false
+    - Name: m_IsTunnelThread
+      Entry: 5
+      Data: false
+    - Name: m_FacadeProperty
+      Entry: 7
+      Data: 14|FacadeProperty, Assembly-CSharp
+    - Name: m_Level
+      Entry: 3
+      Data: 9
+    - Name: m_Name
+      Entry: 1
+      Data: LightGreen
+    - Name: m_Color
+      Entry: 7
+      Data: UnityEngine.Color, UnityEngine.CoreModule
+    - Name: 
+      Entry: 4
+      Data: 0.5137255
+    - Name: 
+      Entry: 4
+      Data: 0.7411765
+    - Name: 
+      Entry: 4
+      Data: 0.180392161
+    - Name: 
+      Entry: 4
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_SplashMaterial
+      Entry: 6
+      Data: 
+    - Name: m_ThreadMaterials
+      Entry: 7
+      Data: 15|UnityEngine.Material[], UnityEngine.CoreModule
+    - Name: 
+      Entry: 12
+      Data: 2
+    - Name: 
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_KnitMaterials
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_ColorLevel
+      Entry: 3
+      Data: 9
     - Name: m_DirectionLevel
       Entry: 3
       Data: 0
@@ -521,7 +517,7 @@ MonoBehaviour:
       Data: 19|Grids.CellData, Assembly-CSharp
     - Name: m_IsLocked
       Entry: 5
-      Data: false
+      Data: true
     - Name: m_Direction
       Entry: 3
       Data: 0
@@ -548,7 +544,7 @@ MonoBehaviour:
       Data: 20|Grids.CellData, Assembly-CSharp
     - Name: m_IsLocked
       Entry: 5
-      Data: true
+      Data: false
     - Name: m_Direction
       Entry: 3
       Data: 0
@@ -581,7 +577,7 @@ MonoBehaviour:
       Data: 0
     - Name: m_QuestionThread
       Entry: 5
-      Data: false
+      Data: true
     - Name: m_IsTunnelThread
       Entry: 5
       Data: false
@@ -656,7 +652,7 @@ MonoBehaviour:
       Data: 24|Grids.CellData, Assembly-CSharp
     - Name: m_IsLocked
       Entry: 5
-      Data: false
+      Data: true
     - Name: m_Direction
       Entry: 3
       Data: 0
@@ -824,10 +820,10 @@ MonoBehaviour:
       Data: 30|Grids.StitchCellData[,], Assembly-CSharp
     - Name: 
       Entry: 12
-      Data: 6
+      Data: 9
     - Name: ranks
       Entry: 1
-      Data: 3|2
+      Data: 3|3
     - Name: 
       Entry: 7
       Data: 31|Grids.StitchCellData, Assembly-CSharp
@@ -836,22 +832,22 @@ MonoBehaviour:
       Data: 32|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
-      Data: 6
+      Data: 9
     - Name: m_Name
       Entry: 1
-      Data: Brown
+      Data: LightGreen
     - Name: m_Color
       Entry: 7
       Data: UnityEngine.Color, UnityEngine.CoreModule
     - Name: 
       Entry: 4
-      Data: 0.5176471
+      Data: 0.5137255
     - Name: 
       Entry: 4
-      Data: 0.211764708
+      Data: 0.7411765
     - Name: 
       Entry: 4
-      Data: 0
+      Data: 0.180392161
     - Name: 
       Entry: 4
       Data: 1
@@ -859,20 +855,20 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 3
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 14
+      Data: 15
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 5
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
     - Name: m_ColorLevel
       Entry: 3
-      Data: 6
+      Data: 9
     - Name: 
       Entry: 8
       Data: 
@@ -884,22 +880,22 @@ MonoBehaviour:
       Data: 34|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
-      Data: 12
+      Data: 9
     - Name: m_Name
       Entry: 1
-      Data: Pink
+      Data: LightGreen
     - Name: m_Color
       Entry: 7
       Data: UnityEngine.Color, UnityEngine.CoreModule
     - Name: 
       Entry: 4
-      Data: 0.8627451
+      Data: 0.5137255
     - Name: 
       Entry: 4
-      Data: 0.5411765
+      Data: 0.7411765
     - Name: 
       Entry: 4
-      Data: 0.7921569
+      Data: 0.180392161
     - Name: 
       Entry: 4
       Data: 1
@@ -907,20 +903,20 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 0
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 9
+      Data: 15
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 2
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
     - Name: m_ColorLevel
       Entry: 3
-      Data: 12
+      Data: 9
     - Name: 
       Entry: 8
       Data: 
@@ -955,14 +951,14 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 0
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 9
+      Data: 8
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 2
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
@@ -978,6 +974,150 @@ MonoBehaviour:
     - Name: m_FacadeProperty
       Entry: 7
       Data: 38|FacadeProperty, Assembly-CSharp
+    - Name: m_Level
+      Entry: 3
+      Data: 9
+    - Name: m_Name
+      Entry: 1
+      Data: LightGreen
+    - Name: m_Color
+      Entry: 7
+      Data: UnityEngine.Color, UnityEngine.CoreModule
+    - Name: 
+      Entry: 4
+      Data: 0.5137255
+    - Name: 
+      Entry: 4
+      Data: 0.7411765
+    - Name: 
+      Entry: 4
+      Data: 0.180392161
+    - Name: 
+      Entry: 4
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_SplashMaterial
+      Entry: 6
+      Data: 
+    - Name: m_ThreadMaterials
+      Entry: 9
+      Data: 15
+    - Name: m_KnitMaterials
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_ColorLevel
+      Entry: 3
+      Data: 9
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 39|Grids.StitchCellData, Assembly-CSharp
+    - Name: m_FacadeProperty
+      Entry: 7
+      Data: 40|FacadeProperty, Assembly-CSharp
+    - Name: m_Level
+      Entry: 3
+      Data: 9
+    - Name: m_Name
+      Entry: 1
+      Data: LightGreen
+    - Name: m_Color
+      Entry: 7
+      Data: UnityEngine.Color, UnityEngine.CoreModule
+    - Name: 
+      Entry: 4
+      Data: 0.5137255
+    - Name: 
+      Entry: 4
+      Data: 0.7411765
+    - Name: 
+      Entry: 4
+      Data: 0.180392161
+    - Name: 
+      Entry: 4
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_SplashMaterial
+      Entry: 6
+      Data: 
+    - Name: m_ThreadMaterials
+      Entry: 9
+      Data: 15
+    - Name: m_KnitMaterials
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_ColorLevel
+      Entry: 3
+      Data: 9
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 41|Grids.StitchCellData, Assembly-CSharp
+    - Name: m_FacadeProperty
+      Entry: 7
+      Data: 42|FacadeProperty, Assembly-CSharp
+    - Name: m_Level
+      Entry: 3
+      Data: 9
+    - Name: m_Name
+      Entry: 1
+      Data: LightGreen
+    - Name: m_Color
+      Entry: 7
+      Data: UnityEngine.Color, UnityEngine.CoreModule
+    - Name: 
+      Entry: 4
+      Data: 0.5137255
+    - Name: 
+      Entry: 4
+      Data: 0.7411765
+    - Name: 
+      Entry: 4
+      Data: 0.180392161
+    - Name: 
+      Entry: 4
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_SplashMaterial
+      Entry: 6
+      Data: 
+    - Name: m_ThreadMaterials
+      Entry: 9
+      Data: 15
+    - Name: m_KnitMaterials
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: m_ColorLevel
+      Entry: 3
+      Data: 9
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 43|Grids.StitchCellData, Assembly-CSharp
+    - Name: m_FacadeProperty
+      Entry: 7
+      Data: 44|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
       Data: 12
@@ -1003,14 +1143,14 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 0
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 9
+      Data: 8
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 2
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
@@ -1022,28 +1162,28 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 7
-      Data: 39|Grids.StitchCellData, Assembly-CSharp
+      Data: 45|Grids.StitchCellData, Assembly-CSharp
     - Name: m_FacadeProperty
       Entry: 7
-      Data: 40|FacadeProperty, Assembly-CSharp
+      Data: 46|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
-      Data: 6
+      Data: 9
     - Name: m_Name
       Entry: 1
-      Data: Brown
+      Data: LightGreen
     - Name: m_Color
       Entry: 7
       Data: UnityEngine.Color, UnityEngine.CoreModule
     - Name: 
       Entry: 4
-      Data: 0.5176471
+      Data: 0.5137255
     - Name: 
       Entry: 4
-      Data: 0.211764708
+      Data: 0.7411765
     - Name: 
       Entry: 4
-      Data: 0
+      Data: 0.180392161
     - Name: 
       Entry: 4
       Data: 1
@@ -1051,47 +1191,47 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 3
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 14
+      Data: 15
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 5
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
     - Name: m_ColorLevel
       Entry: 3
-      Data: 6
+      Data: 9
     - Name: 
       Entry: 8
       Data: 
     - Name: 
       Entry: 7
-      Data: 41|Grids.StitchCellData, Assembly-CSharp
+      Data: 47|Grids.StitchCellData, Assembly-CSharp
     - Name: m_FacadeProperty
       Entry: 7
-      Data: 42|FacadeProperty, Assembly-CSharp
+      Data: 48|FacadeProperty, Assembly-CSharp
     - Name: m_Level
       Entry: 3
-      Data: 6
+      Data: 12
     - Name: m_Name
       Entry: 1
-      Data: Brown
+      Data: Pink
     - Name: m_Color
       Entry: 7
       Data: UnityEngine.Color, UnityEngine.CoreModule
     - Name: 
       Entry: 4
-      Data: 0.5176471
+      Data: 0.8627451
     - Name: 
       Entry: 4
-      Data: 0.211764708
+      Data: 0.5411765
     - Name: 
       Entry: 4
-      Data: 0
+      Data: 0.7921569
     - Name: 
       Entry: 4
       Data: 1
@@ -1099,20 +1239,20 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: m_SplashMaterial
-      Entry: 10
-      Data: 3
+      Entry: 6
+      Data: 
     - Name: m_ThreadMaterials
       Entry: 9
-      Data: 14
+      Data: 8
     - Name: m_KnitMaterials
-      Entry: 10
-      Data: 5
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
     - Name: m_ColorLevel
       Entry: 3
-      Data: 6
+      Data: 12
     - Name: 
       Entry: 8
       Data: 
@@ -1143,8 +1283,9 @@ MonoBehaviour:
       m_KnitMaterials: {fileID: 0}
     m_ColorLevel: 0
     m_DirectionLevel: 0
+  m_GridYMigrated: 1
   m_StitchWidth: 3
-  m_StitchHeight: 2
+  m_StitchHeight: 3
   m_StitchDataDistance:
     m_FacadeProperty:
       m_Level: 0
@@ -1154,8 +1295,10 @@ MonoBehaviour:
       m_ThreadMaterials: []
       m_KnitMaterials: {fileID: 0}
     m_ColorLevel: 0
-  m_QuestionThreadData: []
+  m_QuestionThreadData:
+  - m_Color: 9
   m_TunnelThreadData: []
   m_SlotData:
     m_Count: 1
-  m_KnitColor: 0c00000006000000
+    m_LockedByIndex: 0000000000
+  m_KnitColor: 0c00000009000000

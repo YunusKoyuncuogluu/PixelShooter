@@ -87,7 +87,10 @@ public class Tunnel : MonoBehaviour
         thread.SetCoordinate(m_ExitCoordinate);
 
         thread.transform.gameObject.FollowTo(targetPosition, 5f,
-            onComplete: () => { m_ThreadManager.ControlClickableThreads(); },
+            onComplete: () =>
+            {
+                m_ThreadManager.ControlClickableThreads();
+            },
             onUpdate: (progress) =>
             {
                 thread.transform.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, progress);

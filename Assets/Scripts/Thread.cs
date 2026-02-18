@@ -11,6 +11,7 @@ public class Thread : MonoBehaviour
     [Inject] private ProjectSettings m_ProjectSettings;
     [Inject] private ThreadManager m_ThreadManager;
     [Inject] private SlotManager m_SlotManager;
+    [Inject] private TunnelManager m_TunnelManager;
 
     [SerializeField] private Renderer m_Renderer;
     [SerializeField] private Material m_QuestionMaterial;
@@ -132,6 +133,7 @@ public class Thread : MonoBehaviour
                 m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
                 m_scaleSequence.OnComplete(() =>
                 {
+                    m_TunnelManager.ControlTunnel();
                     var spoolController = GetComponent<SpoolController>();
                     if (spoolController == null)
                     {

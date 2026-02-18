@@ -35,16 +35,10 @@ public class CellManager : MonoBehaviour
     private List<Vector3> m_PositionList;
     private List<Vector2Int> m_CoordinateList;
 
-    // private void Start()
-    // {
-    //     ScriptableLevelBase[] lvls = ScriptableLevelBase.LoadAll();
-    //     ILevelData data = lvls[0];
-    //     LevelData levelData = data as LevelData;
-    //     Construct(levelData);
-    // }
 
     public void Construct(LevelData levelData)
     {
+        levelData.MigrateGridYIfNeeded();
         m_Width = levelData.Width;
         m_Height = levelData.Height;
         m_SpaceX = m_ProjectSettings.CellSpaceX;
@@ -67,7 +61,8 @@ public class CellManager : MonoBehaviour
 
         for (int i = 0; i < m_PositionList.Count; i++)
         {
-            CellData cellData = m_CellData[m_CoordinateList[i].x, m_CoordinateList[i].y];
+            int ay = LevelData.GameYToArrayRow(m_CoordinateList[i].y, m_Height);
+            CellData cellData = m_CellData[m_CoordinateList[i].x, ay];
             Vector3 cellPosition = m_PositionList[i];
             Vector2Int cellCoordinate = m_CoordinateList[i];
             Cell cell = m_CellFactory.Create();

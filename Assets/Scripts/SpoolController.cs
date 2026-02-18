@@ -6,10 +6,6 @@ using Dreamteck.Splines;
 using UnityEngine;
 using Zenject;
 
-/// <summary>
-/// Makara (spool) sökülme mantığı: slota yerleşince veya en alt satır değişince
-/// en alt satırdaki aynı renk stitch'leri kontrol eder. 1/2/3 tane varsa aynı anda sarar (spline ile dalgalı ip).
-/// </summary>
 public class SpoolController : MonoBehaviour
 {
     private const int k_NodesPerSpool = 3;
@@ -21,7 +17,6 @@ public class SpoolController : MonoBehaviour
 
     [Header("Unravel")]
     [SerializeField] private Material m_ThreadMaterial;
-    [Tooltip("İp sallanırken beklenecek süre (saniye); ne kadar uzunsa sarma o kadar hissedilir.")]
     [SerializeField] [Min(0.3f)] private float m_WindingVisibleDuration = 1.4f;
 
     [Header("Fill UI")]
@@ -38,13 +33,15 @@ public class SpoolController : MonoBehaviour
     private CancellationTokenSource m_WindingCts;
     private Slot m_CurrentUnravelSlot;
     private int m_FillCount;
+    /// <summary> 0..k_NodesPerSpool. Sıralama için: yüksek progress önce sarılsın ki makara çabuk %100 olsun. </summary>
+    public int FillCount => m_FillCount;
     private bool m_UnravelInProgress;
-    /// <summary> Şu an bu makara sarma (unravel) yapıyorsa true. Fail kontrolü: slotlar dolu olsa bile sarma varsa fail tetiklenmez. </summary>
     public bool IsWinding => m_UnravelInProgress;
     private SpoolFillUI m_CachedFillUI;
 
     /// <summary>
-    /// En altta makara ile aynı renkte stitch varsa sarma başlatır. isRetry true ise doluluk sıfırlanmaz (devam eden sarma).
+    /// Slotlardaki makaralar sürekli bunu çağırır (SlotManager periyodik + OnFabricBottomRowChanged).
+    /// En altta rengimle eşleşen ip varsa hemen sarar (1–3 sütun aynı anda). isRetry sadece kendi devam turumuz için.
     /// </summary>
     public void TryStartUnravel(Slot slot, GeneralColor spoolColor, bool isRetry = false)
     {
@@ -63,9 +60,9 @@ public class SpoolController : MonoBehaviour
 
         m_UnravelInProgress = true;
         m_CurrentUnravelSlot = slot;
-        if (!isRetry)
+        // Sadece tamamen boş makarada (yeni oturum) doluluk ve UI sıfırlanır. Kısmen doluysa sayacı koruyoruz.
+        if (m_FillCount == 0)
         {
-            m_FillCount = 0;
             ShowFillUI(true);
             m_CachedFillUI = GetFillUI();
             if (m_CachedFillUI != null)
@@ -125,16 +122,12 @@ public class SpoolController : MonoBehaviour
             var tasks = new List<UniTask<StitchNode>>();
             foreach (int col in columns)
                 tasks.Add(m_FabricManager.ConsumeBottomNodeAsync(col));
-            var results = await UniTask.WhenAll(tasks);
+            await UniTask.WhenAll(tasks);
 
             foreach (int col in columns)
                 m_FabricManager.NotifyUnravelEnded(col);
 
-            int consumedCount = 0;
-            foreach (var node in results)
-                if (node != null) consumedCount++;
-
-            m_FillCount += consumedCount;
+            m_FillCount += columns.Count;
 
             if (m_FillCount >= k_NodesPerSpool)
             {
@@ -202,9 +195,6 @@ public class SpoolController : MonoBehaviour
             Destroy(go);
     }
 
-    /// <summary>
-    /// Her hedef stitch için bir spline oluşturur (1–3 adet). Spline 3 noktalı, orta nokta dalga için güncellenir.
-    /// </summary>
     private void CreateSplinesTo(List<StitchNode> targetNodes)
     {
         DestroySplines();

@@ -28,6 +28,8 @@ namespace LevelManagement
 
         public CellData[,] CellData => m_CellData;
 
+        public static int GameYToArrayRow(int gameY, int height) => height - 1 - gameY;
+
         [FoldoutGroup("Grid")]
         [SerializeField]
 #if UNITY_EDITOR
@@ -37,6 +39,9 @@ namespace LevelManagement
 
         [FoldoutGroup("Grid")] [SerializeField]
         private CellData m_CellDataDistance = null;
+
+        [SerializeField, HideInInspector]
+        private bool m_GridYMigrated;
 
         private GUIStyle m_LevelLabelStyle;
         private int m_TunnelCount;
@@ -396,10 +401,27 @@ namespace LevelManagement
             }
         }
 
+        /// <summary> Eski level'larda grid Y eksenini çevirir: Inspector üst satır = oyun üstü olacak. </summary>
+        public void MigrateGridYIfNeeded()
+        {
+            if (m_GridYMigrated || m_CellData == null) return;
+            int w = m_CellData.GetLength(0), h = m_CellData.GetLength(1);
+            var flipped = new CellData[w, h];
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    flipped[x, h - 1 - y] = m_CellData[x, y];
+            m_CellData = flipped;
+            m_GridYMigrated = true;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
         [OnInspectorInit]
         private void OnInspectorInit()
         {
             s_Instance = this;
+            MigrateGridYIfNeeded();
 
             for (int i = 0; i < m_Width; i++)
             for (int j = 0; j < m_Height; j++)
@@ -450,7 +472,6 @@ namespace LevelManagement
         private int m_StitchHeight = 3;
 
         [FoldoutGroup("Stitch")]
-        [InfoBox("Örgü (Fabric) grid – Grid’den bağımsız boyut. Grid/Tunnel/Question ile aynı renk paleti. Hücreye tıkla, 1-9 veya Shift+1-9 ile renk ver. Space: tümünü temizle, R: seçili hücreyi temizle.", InfoMessageType.None)]
         [SerializeField]
 #if UNITY_EDITOR
         [TableMatrix(

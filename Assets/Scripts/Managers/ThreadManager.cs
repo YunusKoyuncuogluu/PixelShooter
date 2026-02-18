@@ -72,7 +72,8 @@ public class ThreadManager : MonoBehaviour
     {
         for (int i = 0; i < m_PositionList.Count; i++)
         {
-            CellData cellData = m_CellData[m_CoordinateList[i].x, m_CoordinateList[i].y];
+            int ay = LevelData.GameYToArrayRow(m_CoordinateList[i].y, m_Height);
+            CellData cellData = m_CellData[m_CoordinateList[i].x, ay];
             if (!cellData.IsFull && !cellData.IsQuestionThread)
                 continue;
 
@@ -141,8 +142,6 @@ public class ThreadManager : MonoBehaviour
 
                 List<Vector3> path = m_PathFinding.PathConvert(pathCoordinates);
 
-                //Temp Path
-
                 thread.SetClickable(isExitFound);
                 thread.ClickableProcess(path);
             }
@@ -153,4 +152,11 @@ public class ThreadManager : MonoBehaviour
         m_Threads[exitCoordinate.x, exitCoordinate.y] = thread;
 
     public void RemoveThread(Vector2Int coordinate) => m_Threads[coordinate.x, coordinate.y] = null;
+
+    [CanBeNull] public Thread ThreadAt(Vector2Int coordinate)
+    {
+        if (coordinate.x < 0 || coordinate.x >= m_Width || coordinate.y < 0 || coordinate.y >= m_Height)
+            return null;
+        return m_Threads[coordinate.x, coordinate.y];
+    }
 }

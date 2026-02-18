@@ -59,17 +59,21 @@ public class SlotManager : MonoBehaviour
             m_FabricManager.OnFabricBottomRowChanged -= TryStartUnravelForAllSlottedSpools;
     }
 
-    /// <summary> En alt satır değişince slotlardaki makaraları kontrol eder; rengi altta varsa otomatik sarma başlatır. </summary>
+    /// <summary> En alt satır değişince slotlardaki makaraları kontrol eder; rengi altta varsa otomatik sarma başlatır. Aynı renkte birden fazla makara varsa önce progress'i yüksek olan sarılır (önce %100 olup çıksın). </summary>
     private void TryStartUnravelForAllSlottedSpools()
     {
         if (m_Threads == null || m_FabricManager == null) return;
-        foreach (Thread thread in m_Threads)
+        var withSpool = new List<(Thread thread, SpoolController spool)>();
+        foreach (Thread t in m_Threads)
         {
-            if (thread == null || thread.MySlot == null) continue;
-            var spool = thread.GetComponent<SpoolController>();
+            if (t == null || t.MySlot == null) continue;
+            var spool = t.GetComponent<SpoolController>();
             if (spool != null)
-                spool.TryStartUnravel(thread.MySlot, thread.Color);
+                withSpool.Add((t, spool));
         }
+        withSpool.Sort((a, b) => b.spool.FillCount.CompareTo(a.spool.FillCount));
+        foreach (var pair in withSpool)
+            pair.spool.TryStartUnravel(pair.thread.MySlot, pair.thread.Color);
         CheckSpoolAreaStuck();
     }
 
@@ -77,8 +81,9 @@ public class SlotManager : MonoBehaviour
     {
         if (m_WaitingThreads.Count > 0)
         {
-            PlacementThread(m_WaitingThreads[0]);
-            m_WaitingThreads.RemoveAt(0);
+            bool placed = PlacementThread(m_WaitingThreads[0]);
+            if (placed)
+                m_WaitingThreads.RemoveAt(0);
         }
 
         if (m_FabricManager != null && m_Threads != null && m_Threads.Count > 0 && Time.time >= m_NextSpoolMatchCheckTime)
@@ -159,6 +164,12 @@ public class SlotManager : MonoBehaviour
 
     private void SelectLockedSlots()
     {
+        if (m_SlotData?.LockedByIndex != null && m_SlotData.LockedByIndex.Count == m_Slots.Count)
+        {
+            for (int i = 0; i < m_Slots.Count; i++)
+                m_Slots[i].SetLocked(m_SlotData.LockedByIndex[i]);
+            return;
+        }
         switch (m_SlotCount)
         {
             case SlotCount.Five:
@@ -169,7 +180,6 @@ public class SlotManager : MonoBehaviour
                 m_Slots[0].SetLocked(true);
                 break;
             case SlotCount.Seven:
-
                 break;
             default:
                 break;
@@ -182,18 +192,20 @@ public class SlotManager : MonoBehaviour
         return slot;
     }
 
-    private void PlacementThread(Thread thread)
+    /// <summary> Thread'i boş bir slota yerleştirir. Slot yoksa kuyrukta kalır (false döner). </summary>
+    private bool PlacementThread(Thread thread)
     {
         Slot slot = GetAvailableSlot();
 
-        if (slot != null)
-        {
-            if (m_Threads.Count < m_Slots.Count)
-                m_Threads.Add(thread);
-            thread.PlacementSlotAnimation(slot);
-            slot.SetFull(true);
-            CheckSpoolAreaStuck();
-        }
+        if (slot == null)
+            return false;
+
+        if (m_Threads.Count < m_Slots.Count)
+            m_Threads.Add(thread);
+        thread.PlacementSlotAnimation(slot);
+        slot.SetFull(true);
+        CheckSpoolAreaStuck();
+        return true;
     }
 
     /// <summary> Tüm slotlar dolu, hiçbir makara şu an sarmıyor ve hiçbir makaranın rengi fabric altında yoksa Fail (OnSpoolAreaStuck) tetiklenir. </summary>

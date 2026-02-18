@@ -40,7 +40,6 @@ namespace Game
                 {
                     m_CurrentThread.OnClick();
                     m_CellManager.SetFull(m_CurrentThread.Coordinate, false);
-                    m_TunnelManager.ControlTunnel();
                     m_ThreadManager.ControlClickableThreads();
                 }
             }
