@@ -12,7 +12,7 @@ public class Cell : MonoBehaviour
     public Vector2Int Coordinate => m_Coordinate;
 
     private bool m_IsLocked;
-    public bool IsLoccked => m_IsLocked;
+    public bool IsLocked => m_IsLocked;
 
     private bool m_IsFull;
     public bool IsFull => m_IsFull;

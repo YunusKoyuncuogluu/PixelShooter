@@ -1,7 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Dreamteck.Splines;
 using UnityEngine;
@@ -34,10 +32,8 @@ public class Thread : MonoBehaviour
     private Slot m_MySlot;
     public Slot MySlot => m_MySlot;
 
-    private CancellationTokenSource m_mMoveCTS;
-
-
     private GeneralColor m_Color;
+    public GeneralColor Color => m_Color;
     private ThreadData m_ThreadData;
     private List<FacadeProperty> m_FacadeProperties;
     private Material[] m_Materials;
@@ -55,8 +51,6 @@ public class Thread : MonoBehaviour
 
     public void Construct(ThreadData threadData)
     {
-        m_mMoveCTS = new CancellationTokenSource();
-
         m_Speed = m_ProjectSettings.ThreadSpeed;
         m_RotateSpeed = m_ProjectSettings.ThreadRotateSpeed;
         m_Transform = transform;
@@ -93,7 +87,7 @@ public class Thread : MonoBehaviour
 
     public void SetTunnelThread(bool isTunnelThread) => m_IsTunnelThread = isTunnelThread;
 
-    public void SetCoordinate(Vector2Int cordinate) => m_Coordinate = cordinate;
+    public void SetCoordinate(Vector2Int coordinate) => m_Coordinate = coordinate;
 
     public void SetOutline(bool open) => m_Materials[0].SetFloat("_OutlineWidth", open ? 1f : 0f);
 
@@ -136,9 +130,21 @@ public class Thread : MonoBehaviour
                 m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
                 m_scaleSequence.Append(m_Transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
                 m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
+                m_scaleSequence.OnComplete(() =>
+                {
+                    var spoolController = GetComponent<SpoolController>();
+                    if (spoolController == null)
+                    {
+                        Debug.LogWarning($"[Thread] SpoolController component not found on Thread GameObject '{gameObject.name}'. Please add SpoolController component to Thread prefab.");
+                    }
+                    else
+                    {
+                        spoolController.TryStartUnravel(m_MySlot, m_Color);
+                    }
+                });
             },
             onUpdate:
-            (progress) => { transform.eulerAngles = Vector3.Lerp(Vector3.zero, new Vector3(90f, 90f, 0f), progress); });
+            (progress) => { transform.eulerAngles = Vector3.Lerp(Vector3.zero, new Vector3(90f, 0f, 90f), progress); });
     }
 
     public class Factory : PlaceholderFactory<Thread>

@@ -20,16 +20,11 @@ namespace Game
         private RaycastHit[] m_Hits;
         private bool m_IsActive;
         private Thread m_CurrentThread;
-        private bool m_MouseDown;
-        private Vector3 m_MouseDownPosition;
-        private int m_LevelIndex;
-
 
         public void Construct()
         {
             m_Hits = new RaycastHit[1];
             SetActive(true);
-            m_LevelIndex = m_LevelManager.CurrentLevelIndex;
         }
 
         private void Update()
@@ -39,8 +34,6 @@ namespace Game
 
             if (Input.GetMouseButtonDown(0))
             {
-                m_MouseDown = true;
-                m_MouseDownPosition = Input.mousePosition;
                 m_CurrentThread = CheckThread();
 
                 if (m_CurrentThread != null && m_CurrentThread.IsClickable)

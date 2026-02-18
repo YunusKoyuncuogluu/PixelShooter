@@ -34,8 +34,14 @@ using UnityEngine;
             foreach (var tunnelTransform in m_TunnelTransform)
                 tunnelTransform.gameObject.SetActive(false);
 
-            m_CurrentTunnelTransform = m_TunnelTransform[(int)m_CurrentDirection - 1];
+            if (m_CurrentDirection == Direction.None || m_TunnelTransform.Length == 0)
+                return;
 
+            int index = (int)m_CurrentDirection - 1;
+            if (index < 0 || index >= m_TunnelTransform.Length)
+                return;
+
+            m_CurrentTunnelTransform = m_TunnelTransform[index];
             m_CurrentTunnelTransform.gameObject.SetActive(true);
             m_CountTMP.gameObject.SetActive(true);
         }

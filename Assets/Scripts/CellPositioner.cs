@@ -19,6 +19,7 @@ public class CellPositioner
         m_SpaceY = spaceY;
     }
     
+    /// <summary> Veri: y=0 alt (duvar), y=Height-1 üst (açık/çıkış). Pozisyonlar: y=0 ekranda altta, y=Height-1 üstte. </summary>
     public List<Vector3> PositionList()
     {
         float virtualHeight = m_Height <= 5 ? 3.5f : 4.2f;

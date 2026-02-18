@@ -62,6 +62,23 @@ public class ProjectSettings : ScriptableObject
 
     public float CellSpaceY => m_CellSpaceY;
 
+    #region Stitch Settings
+
+    [Tooltip("StitchNode sütunu bir sıra aşağı kayarken animasyon süresi (saniye). Resources/ProjectSettings asset'inden değiştirebilirsin.")]
+    [SerializeField] [FoldoutGroup("Stitch Settings")]
+    private float m_StitchShiftDownDuration = 0.25f;
+
+    public float StitchShiftDownDuration => m_StitchShiftDownDuration;
+
+    [Tooltip("Bir makaranın dolması için tüketilmesi gereken stitch node sayısı (örn. 3 = %33, %66, %100).")]
+    [SerializeField] [FoldoutGroup("Stitch Settings")]
+    private int m_StitchNodesPerSpool = 3;
+
+    /// <summary> Bir makara en az 3 stitch ile dolar. 0/1/2 atanırsa 3 kullanılır. </summary>
+    public int StitchNodesPerSpool => m_StitchNodesPerSpool >= 3 ? m_StitchNodesPerSpool : 3;
+
+    #endregion
+
     public float ThreadSpeed
     {
         get => m_ThreadSpeed;

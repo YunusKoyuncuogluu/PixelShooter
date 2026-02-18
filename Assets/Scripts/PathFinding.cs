@@ -42,29 +42,19 @@ public class PathFinding
         queue.Enqueue(start);
         visited[start.x, start.y] = true;
 
-
-        Vector2Int[] directions =
-        {
-            new Vector2Int(1, 0),
-            new Vector2Int(-1, 0),
-            new Vector2Int(0, 1),
-            new Vector2Int(0, -1),
-        };
-
         bool isExit = false;
-
         Vector2Int exitPoint = new Vector2Int();
 
         while (queue.Count > 0)
         {
             Vector2Int current = queue.Dequeue();
 
-            foreach (Vector2Int dir in directions)
+            foreach (Vector2Int dir in m_Directions)
             {
                 Vector2Int next = current + dir;
                 if (next.x >= 0 && next.x < m_Width && next.y >= 0 && next.y < m_Height &&
                     !m_Cells[next.x, next.y].IsFull &&
-                    !m_Cells[next.x, next.y].IsLoccked &&
+                    !m_Cells[next.x, next.y].IsLocked &&
                     !visited[next.x, next.y])
                 {
                     queue.Enqueue(next);

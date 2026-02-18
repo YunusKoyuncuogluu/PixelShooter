@@ -3,6 +3,8 @@ using Dreamteck.Splines;
 
 public static class SplineExtensions
 {
+    private const float DefaultSplineEndZ = 5.68f;
+
     /// <summary>
     /// Objeye spline oluşturur, takip ettirir ve bitince otomatik temizler.
     /// </summary>
@@ -21,7 +23,7 @@ public static class SplineExtensions
 
         // --- Spline Points ---
         Vector3 start = obj.transform.position;
-        Vector3 end = new Vector3(target.position.x,target.position.y, 5.68f);
+        Vector3 end = new Vector3(target.position.x, target.position.y, DefaultSplineEndZ);
         Vector3 mid = (start + end) / 2f + new Vector3(0, Random.Range(4.5f, 7.5f), 0);
 
         SplinePoint[] points = new SplinePoint[3];
@@ -71,7 +73,7 @@ public static class SplineExtensions
         // --- Spline Points ---
         Vector3 start = obj.transform.position;
         Vector3 end = targetPos;
-        Vector3 mid = (start + end) / 2f + new Vector3(0, 2f, 0);
+        Vector3 mid = (start + end) / 2f + new Vector3(0, 0.5f, 0);
 
         SplinePoint[] points = new SplinePoint[3];
         points[0] = new SplinePoint(start);

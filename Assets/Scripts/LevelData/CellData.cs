@@ -29,7 +29,7 @@ namespace Grids
 
         [SerializeField]
         [OnValueChanged(nameof(OnDirectionLevelChanged))]
-        [PropertyRange(0, nameof(GetDirectionProprotyCount))]
+        [PropertyRange(0, nameof(GetDirectionPropertyCount))]
         private int m_DirectionLevel = 0;
 
         private List<FacadeProperty> m_FacadeProperties;
@@ -86,7 +86,7 @@ namespace Grids
 
         public void OnColorLevelChanged() => OnFacadeLevelChanged();
 
-        public int GetDirectionProprotyCount() => 4;
+        public int GetDirectionPropertyCount() => 4;
 
         public Direction Direction
         {

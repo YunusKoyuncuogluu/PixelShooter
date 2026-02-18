@@ -1,4 +1,5 @@
 using System;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 [Serializable]
@@ -13,15 +14,16 @@ public class ThreadData
     private Vector3 m_Position;
     public Vector3 Position => m_Position;
 
-    public ThreadData(GeneralColor color, bool isQuestionThread, Vector2Int cordinate, Vector3 position)
+    public ThreadData(GeneralColor color, bool isQuestionThread, Vector2Int coordinate, Vector3 position)
     {
         m_Color = color;
         m_IsQuestionThread = isQuestionThread;
-        m_Coordinate = cordinate;
+        m_Coordinate = coordinate;
         m_Position = position;
     }
 }
 
+[EnumToggleButtons]
 public enum GeneralColor
 {
     None,
@@ -40,5 +42,4 @@ public enum GeneralColor
     Purple,
     White,
     WoodenColor,
-    
 }

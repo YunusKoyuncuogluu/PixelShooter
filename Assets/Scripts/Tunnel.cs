@@ -69,6 +69,8 @@ public class Tunnel : MonoBehaviour
     {
         Thread thread = m_ThreadManager.CreateTunnelThread(m_ThreadData[0].Color, m_ExitCoordinate);
         thread.transform.localScale = Vector3.zero;
+        thread.transform.position =
+            new Vector3(transform.position.x, thread.transform.position.y, transform.position.z);
         thread.SetCoordinate(m_ExitCoordinate);
         m_ThreadData.RemoveAt(0);
         thread.SetTunnelThread(true);
@@ -84,7 +86,7 @@ public class Tunnel : MonoBehaviour
         thread.SetTunnelThread(false);
         thread.SetCoordinate(m_ExitCoordinate);
 
-        thread.transform.gameObject.FollowTo(targetPosition, 20f,
+        thread.transform.gameObject.FollowTo(targetPosition, 5f,
             onComplete: () => { m_ThreadManager.ControlClickableThreads(); },
             onUpdate: (progress) =>
             {
@@ -106,18 +108,7 @@ public class Tunnel : MonoBehaviour
             Direction.Right => new Vector2Int(coordinate.x + 1, coordinate.y),
             Direction.Up => new Vector2Int(coordinate.x, coordinate.y + 1),
             Direction.Down => new Vector2Int(coordinate.x, coordinate.y - 1),
-        };
-    }
-
-    private Vector3 GetThreadEulerAngle(Direction direction)
-    {
-        return direction switch
-        {
-            Direction.Left => new Vector3(0, -90, 0),
-            Direction.Right => new Vector3(0, 90, 0),
-            Direction.Up => Vector3.zero,
-            Direction.Down => new Vector3(0, 180, 0),
-            _ => Vector3.zero,
+            _ => coordinate,
         };
     }
 

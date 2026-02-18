@@ -127,15 +127,15 @@ public class ThreadManager : MonoBehaviour
     {
         m_PathFinding = new PathFinding(m_Width, m_Height, m_CellManager.Cells);
 
-        for (int i = 0; i < m_Height; i++)
+        for (int y = 0; y < m_Height; y++)
         {
-            for (int j = 0; j < m_Width; j++)
+            for (int x = 0; x < m_Width; x++)
             {
-                if (m_Threads[i, j] == null || m_Threads[i, j].IsTunnelThread)
+                if (m_Threads[x, y] == null || m_Threads[x, y].IsTunnelThread)
                     continue;
 
-                Thread thread = m_Threads[i, j];
-                Vector2Int coordinate = new Vector2Int(i, j);
+                Thread thread = m_Threads[x, y];
+                Vector2Int coordinate = new Vector2Int(x, y);
 
                 List<Vector2Int> pathCoordinates = m_PathFinding.BreadthFirstSearch(coordinate, out bool isExitFound);
 

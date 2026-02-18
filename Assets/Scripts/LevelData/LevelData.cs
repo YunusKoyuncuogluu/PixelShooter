@@ -31,16 +31,8 @@ namespace LevelManagement
         [FoldoutGroup("Grid")]
         [SerializeField]
 #if UNITY_EDITOR
-        [TableMatrix
-            (
-                HideColumnIndices = false,
-                HideRowIndices = true,
-                SquareCells = true,
-                DrawElementMethod = nameof(DrawCell)
-            )
-        ]
+        [TableMatrix(HideColumnIndices = false, HideRowIndices = true, SquareCells = true, DrawElementMethod = nameof(DrawCell))]
 #endif
-
         private CellData[,] m_CellData = new CellData[5, 5];
 
         [FoldoutGroup("Grid")] [SerializeField]
@@ -52,7 +44,7 @@ namespace LevelManagement
 
         private static CellData DrawCell(Rect rect, ref CellData element)
         {
-            if (Event.current.type == EventType.KeyDown)
+            if (Event.current.type == EventType.KeyDown && rect.Contains(Event.current.mousePosition) && s_Instance.m_CellDataDistance != null)
             {
                 s_Instance.m_CellDataDistance.ColorLevel = Event.current.keyCode switch
                 {
@@ -248,14 +240,13 @@ namespace LevelManagement
 
         private void NumberQuestionThread()
         {
-            CellData[,] reversedCellData = ReverseItemData(m_CellData, m_Width, m_Height);
             int questionIndex = 1;
 
             for (int i = 0; i < m_Height; i++)
             {
                 for (int j = 0; j < m_Width; j++)
                 {
-                    var cell = reversedCellData[j, i];
+                    var cell = m_CellData[j, i];
                     if (cell.IsQuestionThread)
                     {
                         cell.QuestionIndex = questionIndex;
@@ -271,14 +262,13 @@ namespace LevelManagement
 
         private void NumberTunnels()
         {
-            CellData[,] reversedCellData = ReverseItemData(m_CellData, m_Width, m_Height);
             int tunnelIndex = 1;
 
             for (int i = 0; i < m_Height; i++)
             {
                 for (int j = 0; j < m_Width; j++)
                 {
-                    var cell = reversedCellData[j, i];
+                    var cell = m_CellData[j, i];
                     if (cell.IsTunnel)
                     {
                         cell.TunnelIndex = tunnelIndex;
@@ -290,18 +280,6 @@ namespace LevelManagement
                     }
                 }
             }
-        }
-
-        private CellData[,] ReverseItemData(CellData[,] cellData, int width, int height)
-        {
-            CellData[,] reversedCellData = new CellData[width, height];
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                    reversedCellData[x, y] = cellData[x, height - 1 - y];
-            }
-
-            return reversedCellData;
         }
 
         private static void ResetCell(CellData element)
@@ -324,6 +302,59 @@ namespace LevelManagement
                 ResetCell(cell);
         }
 
+        private void EnsureStitchDataDimensions()
+        {
+            if (m_StitchData == null || m_StitchData.GetLength(0) != m_StitchWidth || m_StitchData.GetLength(1) != m_StitchHeight)
+            {
+                var newStitch = new StitchCellData[m_StitchWidth, m_StitchHeight];
+                int oldW = m_StitchData?.GetLength(0) ?? 0;
+                int oldH = m_StitchData?.GetLength(1) ?? 0;
+                for (int h = 0; h < m_StitchHeight; h++)
+                for (int w = 0; w < m_StitchWidth; w++)
+                    newStitch[w, h] = new StitchCellData();
+                for (int i = 0; i < Math.Min(m_StitchWidth, oldW); i++)
+                for (int j = 0; j < Math.Min(m_StitchHeight, oldH); j++)
+                    if (m_StitchData[i, j] != null)
+                        newStitch[i, j] = m_StitchData[i, j];
+                m_StitchData = newStitch;
+            }
+        }
+
+        private void OnStitchWidthChanged()
+        {
+            if (m_StitchData == null || m_StitchData.GetLength(0) != m_StitchWidth)
+            {
+                var newStitch = new StitchCellData[m_StitchWidth, m_StitchHeight];
+                int oldW = m_StitchData?.GetLength(0) ?? 0;
+                int oldH = m_StitchData?.GetLength(1) ?? 0;
+                for (int h = 0; h < m_StitchHeight; h++)
+                for (int w = 0; w < m_StitchWidth; w++)
+                    newStitch[w, h] = new StitchCellData();
+                for (int i = 0; i < Math.Min(m_StitchWidth, oldW); i++)
+                for (int j = 0; j < Math.Min(m_StitchHeight, oldH); j++)
+                    if (m_StitchData[i, j] != null)
+                        newStitch[i, j] = m_StitchData[i, j];
+                m_StitchData = newStitch;
+            }
+        }
+
+        private void OnStitchHeightChanged()
+        {
+            if (m_StitchData == null || m_StitchData.GetLength(1) != m_StitchHeight)
+            {
+                var newStitch = new StitchCellData[m_StitchWidth, m_StitchHeight];
+                int oldW = m_StitchData?.GetLength(0) ?? 0;
+                int oldH = m_StitchData?.GetLength(1) ?? 0;
+                for (int h = 0; h < m_StitchHeight; h++)
+                for (int w = 0; w < m_StitchWidth; w++)
+                    newStitch[w, h] = new StitchCellData();
+                for (int i = 0; i < Math.Min(m_StitchWidth, oldW); i++)
+                for (int j = 0; j < Math.Min(m_StitchHeight, oldH); j++)
+                    if (m_StitchData[i, j] != null)
+                        newStitch[i, j] = m_StitchData[i, j];
+                m_StitchData = newStitch;
+            }
+        }
 
         private void OnWidthChanged()
         {
@@ -376,13 +407,20 @@ namespace LevelManagement
                 if (m_CellData[i, j] == null)
                     m_CellData[i, j] = new CellData();
             }
+
+            EnsureStitchDataDimensions();
+            for (int i = 0; i < m_StitchWidth; i++)
+            for (int j = 0; j < m_StitchHeight; j++)
+            {
+                if (m_StitchData[i, j] == null)
+                    m_StitchData[i, j] = new StitchCellData();
+            }
         }
 
         [OnInspectorDispose]
         private void OnInspectorDispose()
         {
             s_Instance = null;
-            Debug.Log("DISPOSSS<<===");
         }
 
 #if UNITY_EDITOR
@@ -398,6 +436,112 @@ namespace LevelManagement
             EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
         }
 #endif
+
+        #region Stitch
+
+        public StitchCellData[,] StitchData => m_StitchData;
+        public int StitchWidth => m_StitchWidth;
+        public int StitchHeight => m_StitchHeight;
+
+        [FoldoutGroup("Stitch")] [MinValue(1)] [OnValueChanged(nameof(OnStitchWidthChanged))] [SerializeField]
+        private int m_StitchWidth = 10;
+
+        [FoldoutGroup("Stitch")] [MinValue(1)] [OnValueChanged(nameof(OnStitchHeightChanged))] [SerializeField]
+        private int m_StitchHeight = 3;
+
+        [FoldoutGroup("Stitch")]
+        [InfoBox("Örgü (Fabric) grid – Grid’den bağımsız boyut. Grid/Tunnel/Question ile aynı renk paleti. Hücreye tıkla, 1-9 veya Shift+1-9 ile renk ver. Space: tümünü temizle, R: seçili hücreyi temizle.", InfoMessageType.None)]
+        [SerializeField]
+#if UNITY_EDITOR
+        [TableMatrix(
+            HideColumnIndices = false,
+            HideRowIndices = true,
+            SquareCells = true,
+            DrawElementMethod = nameof(DrawStitchCell))]
+#endif
+        private StitchCellData[,] m_StitchData = new StitchCellData[10, 3];
+
+        [FoldoutGroup("Stitch")] [SerializeField]
+        [HideInInspector]
+        private StitchCellData m_StitchDataDistance;
+
+        private static StitchCellData DrawStitchCell(Rect rect, ref StitchCellData element)
+        {
+            if (s_Instance == null || element == null) return element;
+
+            if (Event.current.type == EventType.KeyDown && rect.Contains(Event.current.mousePosition) && s_Instance.m_StitchDataDistance != null)
+            {
+                s_Instance.m_StitchDataDistance.ColorLevel = Event.current.keyCode switch
+                {
+                    KeyCode.Alpha1 or KeyCode.Keypad1 => Event.current.shift ? 11 : 1,
+                    KeyCode.Alpha2 or KeyCode.Keypad2 => Event.current.shift ? 12 : 2,
+                    KeyCode.Alpha3 or KeyCode.Keypad3 => Event.current.shift ? 13 : 3,
+                    KeyCode.Alpha4 or KeyCode.Keypad4 => Event.current.shift ? 14 : 4,
+                    KeyCode.Alpha5 or KeyCode.Keypad5 => Event.current.shift ? 15 : 5,
+                    KeyCode.Alpha6 or KeyCode.Keypad6 => Event.current.shift ? 16 : 6,
+                    KeyCode.Alpha7 or KeyCode.Keypad7 => Event.current.shift ? 17 : 7,
+                    KeyCode.Alpha8 or KeyCode.Keypad8 => Event.current.shift ? 18 : 8,
+                    KeyCode.Alpha9 or KeyCode.Keypad9 => Event.current.shift ? 19 : 9,
+                    _ => s_Instance.m_StitchDataDistance.ColorLevel
+                };
+                s_Instance.m_StitchDataDistance.OnColorLevelChanged();
+            }
+
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
+            {
+                GUI.changed = true;
+                Event.current.Use();
+                s_Instance.m_StitchDataDistance = element;
+            }
+
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space && rect.Contains(Event.current.mousePosition))
+            {
+                ResetAllStitch();
+                Event.current.Use();
+            }
+
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R && rect.Contains(Event.current.mousePosition))
+            {
+                ResetStitchCell(element);
+                Event.current.Use();
+            }
+
+            if (element.ColorLevel <= 0)
+            {
+#if UNITY_EDITOR
+                EditorGUI.DrawRect(rect.Padding(1), Color.black);
+                if (ReferenceEquals(element, s_Instance.m_StitchDataDistance))
+                    DrawOutline(rect, Color.magenta, 4);
+#endif
+                return element;
+            }
+
+#if UNITY_EDITOR
+            if (element.FacadeProperty != null)
+                EditorGUI.DrawRect(rect.Padding(1), element.FacadeProperty.Color);
+            else
+                EditorGUI.DrawRect(rect.Padding(1), Color.gray);
+            if (ReferenceEquals(element, s_Instance.m_StitchDataDistance))
+                DrawOutline(rect, Color.magenta, 4);
+#endif
+            return element;
+        }
+
+        private static void ResetStitchCell(StitchCellData element)
+        {
+            if (element == null) return;
+            element.ColorLevel = 0;
+            element.OnColorLevelChanged();
+        }
+
+        private static void ResetAllStitch()
+        {
+            if (s_Instance?.m_StitchData == null) return;
+            foreach (var cell in s_Instance.m_StitchData)
+                ResetStitchCell(cell);
+        }
+
+        #endregion
 
         #region Grid Helper
 
@@ -432,7 +576,7 @@ namespace LevelManagement
             get => m_KnitColor;
             set => m_KnitColor = value;
         }
-
+        
         #endregion
     }
 

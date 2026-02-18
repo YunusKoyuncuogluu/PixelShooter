@@ -12,7 +12,7 @@ namespace LevelManagement
         bool IsBossLevel { get; }
         bool IsBonusLevel { get; }
         bool HasMoveCount => MoveCount > 0;
-        bool HasTiime => Time > 0;
+        bool HasTime => Time > 0;
 
         void Complete(int? starsCount);
         void Unlock();

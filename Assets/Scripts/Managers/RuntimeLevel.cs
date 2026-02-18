@@ -27,10 +27,13 @@ public class RuntimeLevel : IInitializable, IDisposable
         LevelData levelData = currentLevelData as LevelData;
 
         if (currentLevelData == null)
+        {
             Debug.Log("<color=red>Cannot find current level data!</color>");
+            return;
+        }
 
         Initialized?.Invoke(currentLevelData);
-        
+
         m_CellManager.Construct(levelData);
         m_SlotManager.Construct(levelData);
         m_ThreadManager.Construct(levelData);

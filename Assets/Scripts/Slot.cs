@@ -9,16 +9,19 @@ public class Slot : MonoBehaviour
 
     private bool m_IsLocked;
     private bool m_IsFull;
+    private int m_ColumnIndex;
 
     public bool IsLocked => m_IsLocked;
     public bool IsFull => m_IsFull;
+    /// <summary> Fabric grid'deki sütun indeksi (GetBottomNode ile eşleşir). </summary>
+    public int ColumnIndex => m_ColumnIndex;
 
     private Transform m_Transform;
 
-
-    public void Construct(Vector3 localPosition)
+    public void Construct(Vector3 localPosition, int columnIndex)
     {
         m_Transform = transform;
+        m_ColumnIndex = columnIndex;
         m_Transform.localPosition = localPosition;
         m_LockedTransform.gameObject.SetActive(m_IsLocked);
     }

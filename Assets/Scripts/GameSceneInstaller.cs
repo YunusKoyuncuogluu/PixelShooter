@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using RopeWrap.UI;
+using RopeWrap.Game;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using Zenject;
@@ -21,6 +23,20 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
     [SerializeField] [FoldoutGroup("Managers")]
     private SlotManager m_SlotManager;
 
+    [SerializeField] [FoldoutGroup("Managers")]
+    private FabricManager m_FabricManager;
+
+    [SerializeField] [FoldoutGroup("UI")]
+    private LevelResultUI m_LevelResultUI;
+
+    [SerializeField] [FoldoutGroup("UI")]
+    private GameHUD m_GameHUD;
+
+    [SerializeField] [FoldoutGroup("UI")]
+    private LevelFlowController m_LevelFlowController;
+
+    [SerializeField] [FoldoutGroup("UI")]
+    private RopeWrap.UI.ConfettiPlayer m_ConfettiPlayer;
 
     [SerializeField] [FoldoutGroup("Prefabs")]
     private Thread m_ThreadFactory;
@@ -33,6 +49,9 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     [SerializeField] [FoldoutGroup("Prefabs")]
     private Tunnel m_TunnelFactory;
+
+    [SerializeField] [FoldoutGroup("Prefabs")]
+    private StitchNode m_StitchNodeFactory;
 
     public override void InstallBindings()
     {
@@ -48,6 +67,11 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindInstance(m_SlotManager).AsSingle();
         Container.BindInstance(m_PlayerController).AsSingle();
         Container.BindInstance(m_TunnelManager).AsSingle();
+        if (m_FabricManager != null) Container.BindInterfacesAndSelfTo<FabricManager>().FromInstance(m_FabricManager).AsSingle();
+        if (m_LevelResultUI != null) Container.BindInstance(m_LevelResultUI).AsSingle();
+        if (m_GameHUD != null) Container.BindInstance(m_GameHUD).AsSingle();
+        if (m_LevelFlowController != null) Container.BindInstance(m_LevelFlowController).AsSingle();
+        if (m_ConfettiPlayer != null) Container.BindInstance(m_ConfettiPlayer).AsSingle();
     }
 
     public void InstallInstances()
@@ -56,5 +80,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindFactory<Thread, Thread.Factory>().FromComponentInNewPrefab(m_ThreadFactory);
         Container.BindFactory<Slot, Slot.Factory>().FromComponentInNewPrefab(m_SlotFactory);
         Container.BindFactory<Tunnel, Tunnel.Factory>().FromComponentInNewPrefab(m_TunnelFactory);
+        if (m_StitchNodeFactory != null)
+            Container.BindFactory<StitchNode, StitchNode.Factory>().FromComponentInNewPrefab(m_StitchNodeFactory);
     }
 }

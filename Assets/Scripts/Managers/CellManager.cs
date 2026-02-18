@@ -49,7 +49,7 @@ public class CellManager : MonoBehaviour
         m_Height = levelData.Height;
         m_SpaceX = m_ProjectSettings.CellSpaceX;
         m_SpaceY = m_ProjectSettings.CellSpaceY;
-        m_CellData = ReverseItemData(levelData.CellData, m_Width, m_Height);
+        m_CellData = levelData.CellData;
         CreateCells();
     }
 
@@ -76,19 +76,7 @@ public class CellManager : MonoBehaviour
         }
     }
 
-    private CellData[,] ReverseItemData(CellData[,] cellData, int width, int height)
-    {
-        CellData[,] reversedCellData = new CellData[width, height];
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-                reversedCellData[x, y] = cellData[x, height - 1 - y];
-        }
-
-        return reversedCellData;
-    }
-
-    public bool CellIsLocked(Vector2Int coordinate) => m_Cells[coordinate.x, coordinate.y].IsLoccked;
+    public bool CellIsLocked(Vector2Int coordinate) => m_Cells[coordinate.x, coordinate.y].IsLocked;
 
     public void SetFull(Vector2Int tunnelCoordinate, bool a) =>
         m_Cells[tunnelCoordinate.x, tunnelCoordinate.y].SetFull(a);

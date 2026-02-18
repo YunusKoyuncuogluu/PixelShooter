@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using LevelManagement;
 using UnityEngine;
 using Zenject;
@@ -56,6 +58,7 @@ public class LevelManager : IInitializable
 
         m_CurrentLevelIndex = LoadLevel();
         m_ScriptableLevelDataArray = ScriptableLevelBase.LoadAll();
+        SortLevelsByIndex();
         Instance = this;
     }
 
@@ -68,6 +71,24 @@ public class LevelManager : IInitializable
     private void SaveLevel() => PlayerPrefs.SetInt(m_CurrentLevelPref, m_CurrentLevelIndex);
     private static int LoadLevel() => PlayerPrefs.GetInt(m_CurrentLevelPref, 0);
 
+    /// <summary> Resources.LoadAll sırası belirsiz; Level_1, Level_2, ... sırasına göre sırala. </summary>
+    private void SortLevelsByIndex()
+    {
+        if (m_ScriptableLevelDataArray == null || m_ScriptableLevelDataArray.Length == 0) return;
+        m_ScriptableLevelDataArray = m_ScriptableLevelDataArray
+            .OrderBy(level => ParseLevelIndex(level.name))
+            .ToArray();
+    }
+
+    private static int ParseLevelIndex(string levelName)
+    {
+        if (string.IsNullOrEmpty(levelName)) return 0;
+        const string prefix = "Level_";
+        if (!levelName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return 0;
+        string num = levelName.Substring(prefix.Length);
+        return int.TryParse(num, out int index) ? index : 0;
+    }
+
     public void IncreaseLevel() => SetLevel(m_CurrentLevelIndex + 1);
     public void DecreaseLevel() => SetLevel(m_CurrentLevelIndex - 1);
 
@@ -78,7 +99,7 @@ public class LevelManager : IInitializable
         ILevelData currentLevelData = CurrentLevelData;
         currentLevelData.Complete(0);
         IncreaseLevel();
-        ILevelData nextLevelData = currentLevelData;
+        ILevelData nextLevelData = CurrentLevelData;
         nextLevelData.Unlock();
     }
 
