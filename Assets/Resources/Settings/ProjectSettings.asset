@@ -252,5 +252,10 @@ MonoBehaviour:
     m_KnitMaterials: {fileID: 0}
   m_CellSpaceX: 0
   m_CellSpaceY: 0
+  m_StitchOffsetX: 0.1
+  m_StitchOffsetY: 0.1
+  m_StitchShiftDownDuration: 0.25
+  m_StitchNodesPerSpool: 3
+  m_PieceConsumeDuration: 0.1
   m_ThreadSpeed: 30
   m_ThreadRotateSpeed: 300

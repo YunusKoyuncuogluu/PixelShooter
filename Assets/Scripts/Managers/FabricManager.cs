@@ -26,6 +26,7 @@ public class FabricManager : MonoBehaviour, IInitializable
     private StitchNode[,] m_Nodes;
     private Transform m_Anchor;
     private List<Vector3> m_PositionList;
+    private List<Vector3> m_LocalPositionList;
     private List<Vector2Int> m_CoordinateList;
     private float[] m_ColumnCenterX;
     private HashSet<int> m_ColumnsBeingUnraveled = new HashSet<int>();
@@ -48,14 +49,16 @@ public class FabricManager : MonoBehaviour, IInitializable
         m_Width = levelData.StitchWidth;
         m_Height = levelData.StitchHeight;
         m_Anchor = m_FabricAnchor != null ? m_FabricAnchor : m_CellManager.CenterTransform;
-        float spaceX = m_ProjectSettings.CellSpaceX;
-        float spaceY = m_ProjectSettings.CellSpaceY;
 
         StitchCellData[,] stitchData = levelData.StitchData != null
             ? ReverseStitchData(levelData.StitchData, m_Width, m_Height)
             : CreateEmptyStitchData(m_Width, m_Height);
 
-        BuildFabricPositionsBottomAnchored(spaceX, spaceY);
+        StitchNode templateNode = m_StitchNodeFactory.Create();
+        Vector3 cellSize = templateNode.CellSize;
+        float offsetX = m_ProjectSettings != null ? m_ProjectSettings.StitchOffsetX : 0f;
+        float offsetY = m_ProjectSettings != null ? m_ProjectSettings.StitchOffsetY : 0f;
+        BuildFabricPositionsBottomAnchored(cellSize, offsetX, offsetY);
 
         m_ColumnCenterX = new float[m_Width];
         for (int x = 0; x < m_Width; x++)
@@ -74,13 +77,22 @@ public class FabricManager : MonoBehaviour, IInitializable
             Vector3 position = m_PositionList[i];
             Vector2Int coordinate = m_CoordinateList[i];
 
-            StitchNode node = m_StitchNodeFactory.Create();
+            StitchNode node = (i == 0) ? templateNode : m_StitchNodeFactory.Create();
             node.Construct(position, m_Anchor, color, coordinate);
 
             UnityEngine.Color visualColor = GetFacadeColorForStitch(color, facadeProperties);
-            node.SetVisualColor(visualColor);
+            if (color != GeneralColor.None)
+                node.SetVisualColor(visualColor);
 
             m_Nodes[x, y] = node;
+        }
+
+        // Düz dizilmiş stitch grid'i oluşturduktan sonra parent'ı kameraya baksın: kamera euler X = 55 ise parent euler X = -55
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 camEuler = cam.transform.eulerAngles;
+            m_Anchor.rotation = Quaternion.Euler(-camEuler.x, camEuler.y, camEuler.z);
         }
     }
 
@@ -239,13 +251,24 @@ public class FabricManager : MonoBehaviour, IInitializable
     }
 
     /// <summary>
-    /// Async: Sütundaki en alttaki node'u tüketir, sonra üsttekileri bir sıra aşağı kaydırır (Lerp/DOTween). Await edilirse sıra sonraki consume'a kayar.
+    /// Async: Sütundaki en alttaki node'u parça parça tüketir (Knit Out tarzı), sonra üsttekileri bir sıra aşağı kaydırır.
+    /// Her parça PieceConsumeDuration (örn. 0.2s) sürede tüketilir.
     /// </summary>
     public async Cysharp.Threading.Tasks.UniTask<StitchNode> ConsumeBottomNodeAsync(int column)
     {
         StitchNode bottom = GetBottomNode(column);
         if (bottom == null)
             return null;
+
+        int piecesToConsume = bottom.TotalPieces;
+        float pieceDuration = m_ProjectSettings != null ? m_ProjectSettings.PieceConsumeDuration : 0.2f;
+
+        for (int i = 0; i < piecesToConsume; i++)
+        {
+            await Cysharp.Threading.Tasks.UniTask.Delay((int)(pieceDuration * 1000));
+            if (!bottom.ConsumeOnePiece())
+                break;
+        }
 
         int consumedRow = bottom.Row;
         bottom.SetActive(false);
@@ -261,7 +284,7 @@ public class FabricManager : MonoBehaviour, IInitializable
     /// </summary>
     private async Cysharp.Threading.Tasks.UniTask ShiftColumnDownAsync(int column, int consumedRow)
     {
-        if (m_Nodes == null || m_PositionList == null || column < 0 || column >= m_Width || m_Height <= 1)
+        if (m_Nodes == null || m_LocalPositionList == null || column < 0 || column >= m_Width || m_Height <= 1)
             return;
 
         float duration = (m_ProjectSettings != null) ? m_ProjectSettings.StitchShiftDownDuration : 0.25f;
@@ -278,8 +301,8 @@ public class FabricManager : MonoBehaviour, IInitializable
             if (nodeAbove != null && nodeAbove.IsActive)
             {
                 int targetRowIndex = row - consumedRow;
-                Vector3 targetPos = m_PositionList[targetRowIndex * m_Width + column];
-                Tween t = nodeAbove.transform.DOMove(targetPos, duration).SetEase(Ease.Linear);
+                Vector3 targetLocalPos = m_LocalPositionList[targetRowIndex * m_Width + column];
+                Tween t = nodeAbove.transform.DOLocalMove(targetLocalPos, duration).SetEase(Ease.Linear);
                 tweens.Add(t);
             }
         }
@@ -295,7 +318,7 @@ public class FabricManager : MonoBehaviour, IInitializable
 
     private void ShiftColumnDownImmediate(int column, int consumedRow)
     {
-        if (m_Nodes == null || m_PositionList == null || column < 0 || column >= m_Width || m_Height <= 1)
+        if (m_Nodes == null || m_LocalPositionList == null || column < 0 || column >= m_Width || m_Height <= 1)
             return;
 
         for (int row = consumedRow; row < m_Height - 1; row++)
@@ -304,8 +327,8 @@ public class FabricManager : MonoBehaviour, IInitializable
             if (nodeAbove != null && nodeAbove.IsActive)
             {
                 int targetRowIndex = row - consumedRow;
-                Vector3 targetPos = m_PositionList[targetRowIndex * m_Width + column];
-                nodeAbove.transform.position = targetPos;
+                Vector3 targetLocalPos = m_LocalPositionList[targetRowIndex * m_Width + column];
+                nodeAbove.transform.localPosition = targetLocalPos;
             }
         }
     }
@@ -329,19 +352,24 @@ public class FabricManager : MonoBehaviour, IInitializable
     }
 
     /// <summary>
-    /// Fabric anchor grid'in en alt ortasında kalır: y=0 alt satır, yukarı doğru artar. Yatayda ortalanır.
+    /// Fabric anchor grid. cellSize = referans scale, offset = ek boşluk.
     /// </summary>
-    private void BuildFabricPositionsBottomAnchored(float spaceX, float spaceY)
+    private void BuildFabricPositionsBottomAnchored(Vector3 cellSize, float offsetX, float offsetY)
     {
+        float sizeX = Mathf.Max(0.01f, cellSize.x) + offsetX;
+        float sizeZ = Mathf.Max(0.01f, cellSize.z) + offsetY;
+
         m_PositionList = new List<Vector3>(m_Width * m_Height);
+        m_LocalPositionList = new List<Vector3>(m_Width * m_Height);
         m_CoordinateList = new List<Vector2Int>(m_Width * m_Height);
         for (int y = 0; y < m_Height; y++)
         {
             for (int x = 0; x < m_Width; x++)
             {
-                float localX = (x + spaceX * x) - (m_Width + spaceX * (m_Width - 1)) / 2f + 0.5f;
-                float localZ = y + spaceY * y;
+                float localX = x * sizeX - (m_Width * sizeX) / 2f + sizeX / 2f;
+                float localZ = y * sizeZ;
                 Vector3 localPos = new Vector3(localX, 0f, localZ);
+                m_LocalPositionList.Add(localPos);
                 m_PositionList.Add(m_Anchor.TransformPoint(localPos));
                 m_CoordinateList.Add(new Vector2Int(x, y));
             }

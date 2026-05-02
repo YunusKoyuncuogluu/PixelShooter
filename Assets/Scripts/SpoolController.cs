@@ -9,15 +9,16 @@ using Zenject;
 public class SpoolController : MonoBehaviour
 {
     private const int k_NodesPerSpool = 3;
-    private const float kWaveSpeed = 2.2f;
-    private const float kWaveAmplitude = 0.28f;
 
     [Inject] private FabricManager m_FabricManager;
     [Inject] private SlotManager m_SlotManager;
+    [Inject] private ProjectSettings m_ProjectSettings;
 
     [Header("Unravel")]
     [SerializeField] private Material m_ThreadMaterial;
-    [SerializeField] [Min(0.3f)] private float m_WindingVisibleDuration = 1.4f;
+    [SerializeField] [Min(0.3f)] private float m_WindingVisibleDuration = 2.2f;
+    [SerializeField] [Range(0.5f, 4f)] private float m_WaveSpeed = 1.6f;
+    [SerializeField] [Range(0.1f, 1f)] private float m_WaveAmplitude = 0.52f;
 
     [Header("Fill UI")]
     [SerializeField] private SpoolFillUI m_SpoolFillUI;
@@ -29,6 +30,7 @@ public class SpoolController : MonoBehaviour
     private readonly List<SplineComputer> m_SplineComputers = new List<SplineComputer>();
     private readonly List<Vector3> m_BaseMidPoints = new List<Vector3>();
     private readonly List<Vector3> m_InitialEndPositions = new List<Vector3>();
+    private readonly List<StitchNode> m_TargetNodes = new List<StitchNode>();
     private float m_WindingStartTime = -1f;
     private CancellationTokenSource m_WindingCts;
     private Slot m_CurrentUnravelSlot;
@@ -103,21 +105,16 @@ public class SpoolController : MonoBehaviour
 
             CreateSplinesTo(targetNodes);
 
-            float waitSeconds = Mathf.Max(0.3f, m_WindingVisibleDuration);
+            int maxPieces = 10;
+            foreach (var n in targetNodes)
+            {
+                if (n != null && n.TotalPieces > maxPieces)
+                    maxPieces = n.TotalPieces;
+            }
+            float pieceDuration = m_ProjectSettings != null ? m_ProjectSettings.PieceConsumeDuration : 0.2f;
+            float consumptionDuration = Mathf.Max(0.3f, maxPieces * pieceDuration);
             float targetPercent = ((m_FillCount + columns.Count) / (float)k_NodesPerSpool) * 100f;
-            UpdateFillUI(targetPercent, waitSeconds);
-
-            try
-            {
-                await UniTask.Delay((int)(waitSeconds * 1000), cancellationToken: ct);
-            }
-            catch (System.OperationCanceledException)
-            {
-                return;
-            }
-
-            try { await UniTask.Delay(120, cancellationToken: ct); }
-            catch (System.OperationCanceledException) { return; }
+            UpdateFillUI(targetPercent, consumptionDuration);
 
             var tasks = new List<UniTask<StitchNode>>();
             foreach (int col in columns)
@@ -200,6 +197,9 @@ public class SpoolController : MonoBehaviour
         DestroySplines();
         if (targetNodes == null || targetNodes.Count == 0) return;
 
+        m_TargetNodes.Clear();
+        m_TargetNodes.AddRange(targetNodes);
+
         m_SplinesRoot = new GameObject("UnravelSplines");
         m_SplinesRoot.transform.SetParent(transform);
 
@@ -247,9 +247,8 @@ public class SpoolController : MonoBehaviour
         if (m_SplineComputers.Count == 0 || m_WindingStartTime < 0f) return;
 
         Vector3 spoolPos = transform.position;
-        float duration = Mathf.Max(0.01f, m_WindingVisibleDuration);
-        float t = Mathf.Clamp01((Time.time - m_WindingStartTime) / duration);
-        float wave = Mathf.Sin(Time.time * kWaveSpeed) * kWaveAmplitude;
+        float pieceDuration = m_ProjectSettings != null ? m_ProjectSettings.PieceConsumeDuration : 0.2f;
+        float wave = Mathf.Sin(Time.time * m_WaveSpeed) * m_WaveAmplitude;
 
         for (int i = 0; i < m_SplineComputers.Count; i++)
         {
@@ -261,14 +260,20 @@ public class SpoolController : MonoBehaviour
             if (points == null || points.Length < 3) continue;
 
             Vector3 start = spoolPos;
-            Vector3 end = Vector3.Lerp(m_InitialEndPositions[i], spoolPos, t);
+            Vector3 end = (i < m_TargetNodes.Count && m_TargetNodes[i] != null)
+                ? m_TargetNodes[i].GetCurrentPiecePosition()
+                : m_InitialEndPositions[i];
             Vector3 dir = (end - start).normalized;
             Vector3 perp = Vector3.Cross(dir, Vector3.up).normalized;
             if (perp.sqrMagnitude < 0.01f) perp = Vector3.Cross(dir, Vector3.forward).normalized;
 
-            Vector3 mid = Vector3.Lerp(m_BaseMidPoints[i], spoolPos, t * 0.85f);
-            points[0].position = start;
-            points[1].position = mid + perp * wave;
+            float dist = Vector3.Distance(start, end);
+            float waveAtMid = Mathf.Sin(Time.time * m_WaveSpeed) * m_WaveAmplitude;
+            float waveAtSpool = Mathf.Sin(Time.time * m_WaveSpeed - dist * 2f) * m_WaveAmplitude * 0.5f;
+
+            Vector3 mid = (start + end) * 0.5f + perp * (0.15f + waveAtMid);
+            points[0].position = start + perp * waveAtSpool;
+            points[1].position = mid;
             points[2].position = end;
             comp.SetPoints(points);
         }
@@ -279,6 +284,7 @@ public class SpoolController : MonoBehaviour
         m_SplineComputers.Clear();
         m_BaseMidPoints.Clear();
         m_InitialEndPositions.Clear();
+        m_TargetNodes.Clear();
         m_WindingStartTime = -1f;
         if (m_SplinesRoot != null)
         {

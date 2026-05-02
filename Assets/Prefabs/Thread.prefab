@@ -66,6 +66,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_ThreadMaterial: {fileID: 2100000, guid: d2b89dae86aac9a4d9b52881cf3be975, type: 2}
   m_WindingVisibleDuration: 1.4
+  m_WaveSpeed: 3.54
+  m_WaveAmplitude: 0.804
   m_SpoolFillUI: {fileID: 4984321533816226820}
   m_DisappearDuration: 0.35
 --- !u!1 &1058523939324127312

@@ -64,6 +64,18 @@ public class ProjectSettings : ScriptableObject
 
     #region Stitch Settings
 
+    [Tooltip("Stitchler arası ek yatay boşluk (referans scale üzerine eklenir).")]
+    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0f)]
+    private float m_StitchOffsetX;
+
+    public float StitchOffsetX => m_StitchOffsetX;
+
+    [Tooltip("Stitchler arası ek dikey boşluk (referans scale üzerine eklenir).")]
+    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0f)]
+    private float m_StitchOffsetY;
+
+    public float StitchOffsetY => m_StitchOffsetY;
+
     [Tooltip("StitchNode sütunu bir sıra aşağı kayarken animasyon süresi (saniye). Resources/ProjectSettings asset'inden değiştirebilirsin.")]
     [SerializeField] [FoldoutGroup("Stitch Settings")]
     private float m_StitchShiftDownDuration = 0.25f;
@@ -76,6 +88,12 @@ public class ProjectSettings : ScriptableObject
 
     /// <summary> Bir makara en az 3 stitch ile dolar. 0/1/2 atanırsa 3 kullanılır. </summary>
     public int StitchNodesPerSpool => m_StitchNodesPerSpool >= 3 ? m_StitchNodesPerSpool : 3;
+
+    [Tooltip("Bir parçanın tüketilme süresi (saniye). Parça sayısı StitchNode prefab'ındaki Pieces listesinden gelir.")]
+    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0.05f)]
+    private float m_PieceConsumeDuration = 0.2f;
+
+    public float PieceConsumeDuration => Mathf.Max(0.05f, m_PieceConsumeDuration);
 
     #endregion
 
