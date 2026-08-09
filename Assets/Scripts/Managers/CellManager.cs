@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using Grids;
 using LevelManagement;
@@ -8,19 +6,26 @@ using Zenject;
 
 public class CellManager : MonoBehaviour
 {
-    [Inject] LevelManager m_LevelManager;
-    [Inject] ProjectSettings m_ProjectSettings;
     [Inject] Cell.Factory m_CellFactory;
+
     [SerializeField] private Transform m_CenterTransform;
+
+    [Header("Cell Spacing")]
+    [SerializeField] private float cellSpaceX;
+    [SerializeField] private float cellSpaceY;
+
+    [Header("Grid Anchor")]
+    [Tooltip("Grid ust kenarinin local Z degeri (conveyor altina hizalanir).")]
+    [SerializeField] private float gridTopAnchorZ = 3.5f;
 
     private int m_Width;
     private int m_Height;
 
-    private float m_SpaceX;
-    private float m_SpaceY;
-
     public int Width => m_Width;
     public int Height => m_Height;
+    public float CellSpaceX => cellSpaceX;
+    public float CellSpaceY => cellSpaceY;
+    public float GridTopAnchorZ => gridTopAnchorZ;
 
     private CellData[,] m_CellData;
     private Cell[,] m_Cells;
@@ -35,21 +40,24 @@ public class CellManager : MonoBehaviour
     private List<Vector3> m_PositionList;
     private List<Vector2Int> m_CoordinateList;
 
-
     public void Construct(LevelData levelData)
     {
         levelData.MigrateGridYIfNeeded();
         m_Width = levelData.Width;
         m_Height = levelData.Height;
-        m_SpaceX = m_ProjectSettings.CellSpaceX;
-        m_SpaceY = m_ProjectSettings.CellSpaceY;
         m_CellData = levelData.CellData;
         CreateCells();
     }
 
     public void CreateCells()
     {
-        m_GridPositioner = new CellPositioner(m_Width, m_Height, m_CenterTransform, m_SpaceX, m_SpaceY);
+        m_GridPositioner = new CellPositioner(
+            m_Width,
+            m_Height,
+            m_CenterTransform,
+            cellSpaceX,
+            cellSpaceY,
+            gridTopAnchorZ);
         m_PositionList = new List<Vector3>(m_GridPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_GridPositioner.CoordinateList());
         CreateCell(m_Width, m_Height);
@@ -73,8 +81,8 @@ public class CellManager : MonoBehaviour
 
     public bool CellIsLocked(Vector2Int coordinate) => m_Cells[coordinate.x, coordinate.y].IsLocked;
 
-    public void SetFull(Vector2Int tunnelCoordinate, bool a) =>
-        m_Cells[tunnelCoordinate.x, tunnelCoordinate.y].SetFull(a);
+    public void SetFull(Vector2Int tunnelCoordinate, bool isFull) =>
+        m_Cells[tunnelCoordinate.x, tunnelCoordinate.y].SetFull(isFull);
 
     public bool IsFull(Vector2Int coordinate) => m_Cells[coordinate.x, coordinate.y].IsFull;
 
@@ -85,7 +93,6 @@ public class CellManager : MonoBehaviour
 
         return m_Cells[coordinate.x, coordinate.y];
     }
-
 
     public Vector3 GetPosition(Vector2Int coordinate)
     {

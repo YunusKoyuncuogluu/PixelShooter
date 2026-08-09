@@ -1,26 +1,16 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using LevelManagement;
-using RopeWrap.Game;
 using UnityEngine;
 using Zenject;
 
 public class SlotManager : MonoBehaviour
 {
-    /// <summary> Tüm slotlar dolu ve hiçbir makara söküm yapamıyorsa (hepsinin üstündeki renk fabric altında yok) tetiklenir. </summary>
+    /// <summary> Tum slotlar dolu ve hicbir makara islem yapamiyorsa tetiklenir. </summary>
     public event Action OnSpoolAreaStuck;
-    [Inject] private LevelManager m_LevelManager;
-    [InjectOptional] private FabricManager m_FabricManager;
-    [InjectOptional] private LevelFlowController m_LevelFlowController;
 
-    [Inject] private ProjectSettings m_ProjectSettings;
-    [Inject] private ThreadManager m_ThreadManager;
     [Inject] private Slot.Factory m_SlotFactory;
     [SerializeField] private float m_SlotSpaceX;
-
-    private SlotState m_SlotState;
-    public SlotState SlotState => m_SlotState;
 
     private SlotData m_SlotData;
     public SlotData SlotData => m_SlotData;
@@ -34,47 +24,16 @@ public class SlotManager : MonoBehaviour
     private List<Thread> m_Threads;
     private List<Thread> m_WaitingThreads;
 
-    /// <summary> Slottaki makara sayısı (ip bitince hepsi yok olmalı; level complete ancak 0 olduğunda). </summary>
+    /// <summary> Slottaki makara sayisi (level complete ancak 0 oldugunda). </summary>
     public int SpoolCount => m_Threads?.Count ?? 0;
-
-    [Tooltip("En alt satırla eşleşen makaraları bu sıklıkta kontrol eder (saniye).")]
-    [SerializeField] private float m_SpoolMatchCheckInterval = 0.25f;
-    private float m_NextSpoolMatchCheckTime;
 
     public void Construct(LevelData levelData)
     {
-        m_WaitingThreads = new();
-        m_Threads = new();
-        m_SlotState = SlotState.Available;
+        m_WaitingThreads = new List<Thread>();
+        m_Threads = new List<Thread>();
         m_SlotData = levelData.SlotData;
         m_SlotCount = m_SlotData.Count;
         CreateSlot();
-        if (m_FabricManager != null)
-            m_FabricManager.OnFabricBottomRowChanged += TryStartUnravelForAllSlottedSpools;
-    }
-
-    private void OnDestroy()
-    {
-        if (m_FabricManager != null)
-            m_FabricManager.OnFabricBottomRowChanged -= TryStartUnravelForAllSlottedSpools;
-    }
-
-    /// <summary> En alt satır değişince slotlardaki makaraları kontrol eder; rengi altta varsa otomatik sarma başlatır. Aynı renkte birden fazla makara varsa önce progress'i yüksek olan sarılır (önce %100 olup çıksın). </summary>
-    private void TryStartUnravelForAllSlottedSpools()
-    {
-        if (m_Threads == null || m_FabricManager == null) return;
-        var withSpool = new List<(Thread thread, SpoolController spool)>();
-        foreach (Thread t in m_Threads)
-        {
-            if (t == null || t.MySlot == null) continue;
-            var spool = t.GetComponent<SpoolController>();
-            if (spool != null)
-                withSpool.Add((t, spool));
-        }
-        withSpool.Sort((a, b) => b.spool.FillCount.CompareTo(a.spool.FillCount));
-        foreach (var pair in withSpool)
-            pair.spool.TryStartUnravel(pair.thread.MySlot, pair.thread.Color);
-        CheckSpoolAreaStuck();
     }
 
     private void Update()
@@ -85,17 +44,11 @@ public class SlotManager : MonoBehaviour
             if (placed)
                 m_WaitingThreads.RemoveAt(0);
         }
-
-        if (m_FabricManager != null && m_Threads != null && m_Threads.Count > 0 && Time.time >= m_NextSpoolMatchCheckTime)
-        {
-            m_NextSpoolMatchCheckTime = Time.time + m_SpoolMatchCheckInterval;
-            TryStartUnravelForAllSlottedSpools();
-        }
     }
 
     private const int MaxSlotCount = 7;
 
-    private static int GetSlotCountFromEnum(SlotCount count)
+    private int GetSlotCountFromEnum(SlotCount count)
     {
         return count switch
         {
@@ -126,11 +79,9 @@ public class SlotManager : MonoBehaviour
         {
             Slot slot = m_Slots[i];
             slot.Construct(localPositions[i], i);
-            Debug.Log($"[SlotManager] Created slot {i} at position {localPositions[i]}, ColumnIndex: {i}, Locked: {slot.IsLocked}");
         }
 
         m_Slots = new List<Slot>(FindNoneLockedSlots());
-        Debug.Log($"[SlotManager] After filtering locked slots, {m_Slots.Count} available slots remain");
     }
 
     private List<Slot> FindNoneLockedSlots()
@@ -186,13 +137,23 @@ public class SlotManager : MonoBehaviour
         }
     }
 
-    private Slot GetAvailableSlot()
+    /// <summary> Bos (unlocked + empty) slot. </summary>
+    public Slot GetAvailableSlot()
     {
-        Slot slot = m_Slots.Find(s => s.IsLocked == false && s.IsFull == false);
-        return slot;
+        if (m_Slots == null)
+            return null;
+
+        for (int i = 0; i < m_Slots.Count; i++)
+        {
+            Slot slot = m_Slots[i];
+            if (slot != null && !slot.IsLocked && !slot.IsFull)
+                return slot;
+        }
+
+        return null;
     }
 
-    /// <summary> Thread'i boş bir slota yerleştirir. Slot yoksa kuyrukta kalır (false döner). </summary>
+    /// <summary> Thread'i bos bir slota yerlestirir. Slot yoksa kuyrukta kalir (false doner). </summary>
     private bool PlacementThread(Thread thread)
     {
         Slot slot = GetAvailableSlot();
@@ -202,56 +163,69 @@ public class SlotManager : MonoBehaviour
 
         if (m_Threads.Count < m_Slots.Count)
             m_Threads.Add(thread);
-        thread.PlacementSlotAnimation(slot);
         slot.SetFull(true);
-        CheckSpoolAreaStuck();
+        thread.DepartFromSlot(slot);
         return true;
-    }
-
-    /// <summary> Tüm slotlar dolu, hiçbir makara şu an sarmıyor ve hiçbir makaranın rengi fabric altında yoksa Fail (OnSpoolAreaStuck) tetiklenir. </summary>
-    private void CheckSpoolAreaStuck()
-    {
-        if (m_Slots == null || m_Threads == null || m_FabricManager == null) return;
-        bool allFull = true;
-        foreach (Slot s in m_Slots)
-        {
-            if (!s.IsFull) { allFull = false; break; }
-        }
-        if (!allFull) return;
-
-        foreach (Thread t in m_Threads)
-        {
-            if (t == null) continue;
-            var spool = t.GetComponent<SpoolController>();
-            if (spool != null && spool.IsWinding)
-                return;
-        }
-
-        foreach (Thread t in m_Threads)
-        {
-            if (t == null || t.MySlot == null || !t.MySlot.IsFull) continue;
-            if (m_FabricManager.GetColumnWithBottomColor(t.Color) >= 0)
-                return;
-        }
-        OnSpoolAreaStuck?.Invoke();
     }
 
     public void SaveThread(Thread thread)
     {
+        if (thread == null)
+            return;
+
+        if (m_WaitingThreads.Contains(thread))
+            return;
+
+        if (m_Threads != null && m_Threads.Contains(thread))
+            return;
+
         m_WaitingThreads.Add(thread);
     }
 
-    /// <summary> Makara dolup yok olduğunda listeden çıkarılır. </summary>
+    /// <summary> Makara dolup yok oldugunda listeden cikarilir. </summary>
     public void RemoveThread(Thread thread)
     {
         if (thread != null && m_Threads != null)
             m_Threads.Remove(thread);
     }
-}
 
-public enum SlotState
-{
-    None,
-    Available,
-    Busy
+    /// <summary> Tum acik (unlocked) slotlar dolu mu? </summary>
+    public bool IsAreaFull
+    {
+        get
+        {
+            if (m_Slots == null || m_Slots.Count == 0)
+                return true;
+
+            for (int i = 0; i < m_Slots.Count; i++)
+            {
+                Slot slot = m_Slots[i];
+                if (slot != null && !slot.IsLocked && !slot.IsFull)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Conveyor'dan donen makarayi dogrudan slota yerlestirir (kuyruk / animasyon yok).
+    /// </summary>
+    public void ForcePlaceThread(Thread thread, Slot slot)
+    {
+        if (thread == null || slot == null)
+            return;
+
+        if (m_Threads != null && !m_Threads.Contains(thread))
+            m_Threads.Add(thread);
+
+        slot.SetFull(true);
+        thread.BindToSlotImmediate(slot);
+    }
+
+    /// <summary> Level fail: slot alani kilitli / stuck. </summary>
+    public void NotifySpoolAreaStuck()
+    {
+        OnSpoolAreaStuck?.Invoke();
+    }
 }

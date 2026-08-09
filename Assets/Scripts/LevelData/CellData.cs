@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sirenix.OdinInspector;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Grids
 {
@@ -19,7 +17,6 @@ namespace Grids
         [SerializeField] [OnValueChanged(nameof(ChangeTunnelThread))]
         private bool m_IsTunnelThread;
 
-
         [SerializeField, HideInInspector] private FacadeProperty m_FacadeProperty;
 
         [SerializeField]
@@ -32,12 +29,8 @@ namespace Grids
         [PropertyRange(0, nameof(GetDirectionPropertyCount))]
         private int m_DirectionLevel = 0;
 
-        private List<FacadeProperty> m_FacadeProperties;
-
-        private int preDirectionLevel = 0;
         private int m_tunnelIndex;
         private int m_QuestionIndex;
-        private List<FacadeProperty> FacadeProperties => m_FacadeProperties;
 
         public FacadeProperty FacadeProperty => m_FacadeProperty;
         public bool IsTunnel => m_IsTunnelThread;
@@ -70,15 +63,19 @@ namespace Grids
 
         public int DirectionLevel
         {
-            get
-            {
-                preDirectionLevel = m_DirectionLevel;
-                return m_DirectionLevel;
-            }
+            get => m_DirectionLevel;
             set => m_DirectionLevel = value;
         }
 
-        private int GetFacadePropertyCount() => FacadeProperty.GetFacadeProperties().Count();
+        private int GetFacadePropertyCount()
+        {
+            ProjectSettings settings = ProjectSettings.Load();
+            if (settings == null)
+                return 0;
+
+            List<FacadeProperty> properties = settings.GetFacadeProperties();
+            return properties != null ? properties.Count : 0;
+        }
 
         public void ChangeLocked(bool isLocked) => m_IsLocked = isLocked;
         public void ChangeQuestionThread(bool isQuestionThread) => m_QuestionThread = isQuestionThread;
@@ -94,23 +91,25 @@ namespace Grids
             set => m_Direction = value;
         }
 
-        private void InitializeFacadeProperties()
-        {
-            m_FacadeProperties = new List<FacadeProperty>(global::FacadeProperty.GetFacadeProperties());
-            if (m_FacadeProperties.Count > 0)
-            {
-                m_FacadeProperty = m_FacadeProperties.First();
-            }
-        }
-
         public void OnFacadeLevelChanged()
         {
-            List<FacadeProperty> facadeProperties = FacadeProperty.GetFacadeProperties().ToList();
-            FacadeProperty matchingFacadeProperty =
-                facadeProperties.FirstOrDefault(facade => facade.Level == m_ColorLevel);
+            ProjectSettings settings = ProjectSettings.Load();
+            if (settings == null)
+                return;
 
-            if (matchingFacadeProperty != null)
-                m_FacadeProperty = matchingFacadeProperty;
+            List<FacadeProperty> facadeProperties = settings.GetFacadeProperties();
+            if (facadeProperties == null)
+                return;
+
+            for (int i = 0; i < facadeProperties.Count; i++)
+            {
+                FacadeProperty facade = facadeProperties[i];
+                if (facade != null && facade.Level == m_ColorLevel)
+                {
+                    m_FacadeProperty = facade;
+                    return;
+                }
+            }
         }
 
         public void OnDirectionLevelChanged()

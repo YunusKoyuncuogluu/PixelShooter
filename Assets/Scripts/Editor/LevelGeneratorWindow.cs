@@ -10,14 +10,12 @@ using UnityEngine;
 namespace RopeWrap.Editor
 {
     /// <summary>
-    /// Üst açık, alt kapalı. Stitch grid: hep renk, duvar yok; karışık ama puzzle uyumlu. Normal grid 5x5'ten 10x10'a.
-    /// Ara duvarlar (L, T) ile zorlaştırma. Makara*3 = ip.
+    /// Environment cercevesi harici; grid tam oynanabilir.
+    /// Ara duvarlar (L, T IsLocked) ile zorlastirma. Normal grid 5x5'ten 10x10'a.
     /// </summary>
     public class LevelGeneratorWindow : EditorWindow
     {
         private const string LevelsFolder = "Assets/Resources/Levels";
-        private const int StitchWidth = 3;
-        private const int StitchesPerSpool = 3;
         private const int MinGridSize = 5;
         private const int MaxGridSize = 10;
         private const int MinThreadsPerTunnel = 2;
@@ -74,15 +72,10 @@ namespace RopeWrap.Editor
             GetDifficultyParams(levelIndex, out int numColors, out int numSpools, out int numTunnels, out int numQuestions, out int numInternalWalls);
             numSpools = Math.Max(numSpools, numColors);
 
-            // Toplam ip = grid makaraları + tünel ipleri + question ipleri. Her makara 3 ip alır. Her tünel en az 2 makara içerir.
-            int totalThreads = numSpools + (numTunnels * MinThreadsPerTunnel) + numQuestions;
-            int totalStitches = totalThreads * StitchesPerSpool;
-
             int[] chosenLevels = GetChosenFacadeLevels(numColors);
             if (chosenLevels == null || chosenLevels.Length != numColors)
                 chosenLevels = FallbackLevels(numColors);
 
-            // Tünel ve question renklerini önce ata (stitch dağılımı için)
             int[] tunnelColorIndices = new int[numTunnels];
             int[] questionColorIndices = new int[numQuestions];
             for (int i = 0; i < numTunnels; i++)
@@ -90,16 +83,11 @@ namespace RopeWrap.Editor
             for (int i = 0; i < numQuestions; i++)
                 questionColorIndices[i] = UnityEngine.Random.Range(0, numColors);
 
-            int[] spoolCountPerColor;
-            int[] stitchesPerColor = BuildStitchesPerColorIncludingTunnelAndQuestion(
-                numSpools, numColors, numTunnels, numQuestions, tunnelColorIndices, questionColorIndices,
-                chosenLevels, out spoolCountPerColor);
-
-            int stitchHeight = Math.Max(1, totalStitches / StitchWidth);
-            int[,] stitchGrid = BuildStitchGridW3(stitchHeight, stitchesPerColor, chosenLevels, totalStitches);
+            int[] spoolCountPerColor = BuildSpoolCountPerColorIncludingTunnelAndQuestion(
+                numSpools, numColors, numTunnels, numQuestions, tunnelColorIndices, questionColorIndices);
 
             LevelData level = ScriptableObject.CreateInstance<LevelData>();
-            SetLevelDataViaReflection(level, levelIndex, gridW, gridH, stitchGrid, stitchHeight,
+            SetLevelDataViaReflection(level, levelIndex, gridW, gridH,
                 spoolCountPerColor, chosenLevels, numSpools, numTunnels, numQuestions, numInternalWalls,
                 tunnelColorIndices, questionColorIndices);
             SyncFacadeProperties(level);
@@ -151,32 +139,9 @@ namespace RopeWrap.Editor
             }
         }
 
-        private static int[] DistributeStitchesByColor(int totalSpools, int numColors, out int[] spoolCountPerColor)
-        {
-            spoolCountPerColor = new int[numColors + 1];
-            int remainder = totalSpools;
-            for (int c = 1; c < numColors; c++)
-            {
-                int n = UnityEngine.Random.Range(1, Math.Max(2, remainder - (numColors - c)));
-                spoolCountPerColor[c] = n;
-                remainder -= n;
-            }
-            spoolCountPerColor[numColors] = remainder;
-
-            int[] stitchesPerColor = new int[numColors + 1];
-            for (int c = 1; c <= numColors; c++)
-                stitchesPerColor[c] = spoolCountPerColor[c] * StitchesPerSpool;
-            return stitchesPerColor;
-        }
-
-        /// <summary>
-        /// Grid + tünel + question dahil toplam ipler için stitch dağılımı. Her makara 3 ip.
-        /// Toplam stitch = (numSpools + numTunnels + numQuestions) * 3.
-        /// </summary>
-        private static int[] BuildStitchesPerColorIncludingTunnelAndQuestion(
+        private static int[] BuildSpoolCountPerColorIncludingTunnelAndQuestion(
             int numSpools, int numColors, int numTunnels, int numQuestions,
-            int[] tunnelColorIndices, int[] questionColorIndices, int[] chosenLevels,
-            out int[] spoolCountPerColor)
+            int[] tunnelColorIndices, int[] questionColorIndices)
         {
             int[] gridSpoolCount = new int[numColors + 1];
             int remainder = numSpools;
@@ -187,9 +152,7 @@ namespace RopeWrap.Editor
                 remainder -= n;
             }
             gridSpoolCount[numColors] = remainder;
-            spoolCountPerColor = gridSpoolCount;
 
-            // Renk indeksine göre tünel ve question sayıları (0..numColors-1). Her tünel MinThreadsPerTunnel makara içerir.
             int[] tunnelCountPerColorIndex = new int[numColors];
             int[] questionCountPerColorIndex = new int[numColors];
             for (int i = 0; i < numTunnels; i++)
@@ -197,7 +160,7 @@ namespace RopeWrap.Editor
             for (int i = 0; i < numQuestions; i++)
                 questionCountPerColorIndex[questionColorIndices[i]]++;
 
-            // Puzzle'da (stitch/tünel/question) görünen her renkte en az 1 grid makara olmalı; aksi halde "mavi ip var ama makara 0" hatası oluşur.
+            // Puzzle'da gorunen her renkte en az 1 grid makara olmali.
             for (int c = 1; c <= numColors; c++)
             {
                 int idx = c - 1;
@@ -216,20 +179,13 @@ namespace RopeWrap.Editor
                 }
             }
 
-            int[] stitchesPerColor = new int[numColors + 1];
-            for (int c = 1; c <= numColors; c++)
-            {
-                int idx = c - 1;
-                int threadsOfColor = gridSpoolCount[c] + tunnelCountPerColorIndex[idx] + questionCountPerColorIndex[idx];
-                stitchesPerColor[c] = threadsOfColor * StitchesPerSpool;
-            }
-            return stitchesPerColor;
+            return gridSpoolCount;
         }
 
-        /// <summary> ProjectSettings FacadeProperties'ten numColors kadar rastgele Level seçer (1-14 arası). Her renk yalnızca bir kez seçilir; böylece puzzle'da görünen her renk için en az bir makara olur. </summary>
+        /// <summary> ProjectSettings FacadeProperties'ten numColors kadar rastgele Level secer (1-14 arasi). Her renk yalnizca bir kez secilir. </summary>
         private static int[] GetChosenFacadeLevels(int numColors)
         {
-            var list = FacadeProperty.GetOriginalFacadeProperties();
+            var list = ProjectSettings.Load()?.GetOriginalFacadeProperties();
             if (list == null || list.Count == 0) return null;
             var levelSet = new HashSet<int>();
             foreach (var f in list)
@@ -284,56 +240,12 @@ namespace RopeWrap.Editor
             return locked;
         }
 
-        /// <summary> Stitch grid: her zaman 3 genişlik, duvar yok; tüm hücreler renk (chosenLevels), karışık dizilim, puzzle uyumlu. </summary>
-        private static int[,] BuildStitchGridW3(int height, int[] stitchesPerColor, int[] chosenLevels, int totalStitches)
-        {
-            const int w = StitchWidth;
-            int numColors = chosenLevels.Length;
-            var colorList = new List<int>();
-            for (int c = 0; c < numColors; c++)
-                for (int k = 0; k < stitchesPerColor[c + 1]; k++)
-                    colorList.Add(chosenLevels[c]);
-            Shuffle(colorList);
-
-            var grid = new int[w, height];
-            int idx = 0;
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    grid[x, y] = idx < colorList.Count ? colorList[idx++] : chosenLevels[UnityEngine.Random.Range(0, numColors)];
-                }
-            }
-
-            // Oyun en alt satırı (y=height-1) ilk tüketilir; her rengin bu satırda en az bir kez bulunması çözülebilirlik için gerekli.
-            int bottomRow = height - 1;
-            for (int c = 0; c < numColors; c++)
-            {
-                int colorId = chosenLevels[c];
-                bool found = false;
-                for (int x = 0; x < w && !found; x++)
-                    if (grid[x, bottomRow] == colorId) found = true;
-                if (found) continue;
-                int swapX = c % w;
-                for (int y = 0; y < height - 1 && !found; y++)
-                {
-                    for (int x = 0; x < w; x++)
-                    {
-                        if (grid[x, y] == colorId)
-                        {
-                            (grid[x, y], grid[swapX, bottomRow]) = (grid[swapX, bottomRow], grid[x, y]);
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            return grid;
-        }
-
-        /// <summary> Grid: alt (y=0), sol (x=0), sağ (x=w-1) kapalı. Üst sıra (y=h-1) açık. chosenLevels = FacadeProperty.Level değerleri (1-14). </summary>
+        /// <summary>
+        /// U kenar IsLocked yok: cerceve EnvironmentFrameBuilder ile gelir.
+        /// IsLocked sadece zorluk icin ic engellerde (AddInternalWalls) kullanilir.
+        /// chosenLevels = FacadeProperty.Level degerleri (1-14).
+        /// </summary>
         private static void SetLevelDataViaReflection(LevelData level, int levelIndex, int gridW, int gridH,
-            int[,] stitchGrid, int stitchHeight,
             int[] spoolCountPerColor, int[] chosenLevels, int totalSpools, int numTunnels, int numQuestions, int numInternalWalls,
             int[] tunnelColorIndices, int[] questionColorIndices)
         {
@@ -343,14 +255,11 @@ namespace RopeWrap.Editor
 
             SetField(levelType, level, "m_Width", gridW);
             SetField(levelType, level, "m_Height", gridH);
-            SetField(levelType, level, "m_StitchWidth", StitchWidth);
-            SetField(levelType, level, "m_StitchHeight", stitchHeight);
 
-            // Oyun grid'i ters çevirerek çiziyor: veride y=0 ekranda alt (kapalı), y=height-1 ekranda üst (açık). Üst açık kalmalı.
-            bool IsWall(int x, int y) => y == 0 || x == 0 || x == gridW - 1;
-            List<Vector2Int> interior = new List<Vector2Int>();
-            for (int x = 1; x < gridW - 1; x++)
-                for (int y = 1; y < gridH; y++)
+            // Tum grid oynanabilir alan; cerceve Environment visual. IsLocked sadece ic engel icin.
+            List<Vector2Int> interior = new List<Vector2Int>(gridW * gridH);
+            for (int x = 0; x < gridW; x++)
+                for (int y = 0; y < gridH; y++)
                     interior.Add(new Vector2Int(x, y));
             Shuffle(interior);
 
@@ -359,12 +268,7 @@ namespace RopeWrap.Editor
                 for (int y = 0; y < gridH; y++)
                     cellData[x, y] = new CellData();
 
-            for (int x = 0; x < gridW; x++)
-                for (int y = 0; y < gridH; y++)
-                    if (IsWall(x, y))
-                        cellData[x, y].ChangeLocked(true);
-
-            AddInternalWalls(cellData, gridW, gridH, interior, IsWall, numInternalWalls);
+            AddInternalWalls(cellData, gridW, gridH, interior, numInternalWalls);
 
             // Her renkten en az bir makarayı çıkışa en yakın hücrelere yerleştir; böylece hiçbir renk "sıkışmış" olmaz ve level çözülebilir kalır.
             var accessibleOrdered = interior.Where(p => !cellData[p.x, p.y].IsLocked)
@@ -440,7 +344,6 @@ namespace RopeWrap.Editor
                 {
                     Vector2Int exitData = GetExitDataCellForValidation(p, dir);
                     if (exitData.x >= 0 && exitData.x < gridW && exitData.y >= 0 && exitData.y < gridH
-                        && !IsWall(exitData.x, exitData.y)
                         && !usedPos.Contains(exitData)
                         && !tunnelCellSet.Contains(exitData)
                         && !cellData[exitData.x, exitData.y].IsLocked)
@@ -482,22 +385,7 @@ namespace RopeWrap.Editor
             questionThreadDataList = questionThreadDataList.Zip(questionCells, (data, pos) => (pos, data)).OrderBy(t => GridOrderKey(t.pos)).Select(t => t.data).ToList();
             SetField(levelType, level, "m_QuestionThreadData", questionThreadDataList);
 
-            StitchCellData[,] stitchData = new StitchCellData[StitchWidth, stitchHeight];
-            for (int x = 0; x < StitchWidth; x++)
-                for (int y = 0; y < stitchHeight; y++)
-                {
-                    var sc = new StitchCellData();
-                    sc.ColorLevel = stitchGrid[x, y];
-                    stitchData[x, y] = sc;
-                }
-
             SetField(levelType, level, "m_CellData", cellData);
-            SetField(levelType, level, "m_StitchData", stitchData);
-
-            var knitColors = new List<GeneralColor>();
-            for (int c = 0; c < numColors; c++)
-                knitColors.Add((GeneralColor)chosenLevels[c]);
-            SetField(levelType, level, "m_KnitColor", knitColors);
 
             SlotCount slotCount = gridW <= 5 ? SlotCount.Five : (gridW <= 6 ? SlotCount.Six : SlotCount.Seven);
             SlotData slotData = new SlotData();
@@ -506,6 +394,9 @@ namespace RopeWrap.Editor
             SetField(typeof(SlotData), slotData, "m_LockedByIndex", lockedSlots);
             SetField(levelType, level, "m_SlotData", slotData);
 
+            int plateCount = ResolvePlateCountForLevel(levelIndex, slotCount);
+            SetField(levelType, level, "m_PlateCount", plateCount);
+
             SetField(baseType, level, "m_IsUnlocked", levelIndex == 1);
             SetField(baseType, level, "m_MoveCount", 0);
             SetField(baseType, level, "m_Time", 0f);
@@ -513,8 +404,24 @@ namespace RopeWrap.Editor
             SetField(baseType, level, "m_IsBonusLevel", false);
         }
 
-        /// <summary> L veya T duvar şekilleri: kenarlara yakın yerleştirir; grid ortasına duvar konmaz. </summary>
-        private static void AddInternalWalls(CellData[,] cellData, int gridW, int gridH, List<Vector2Int> interior, Func<int, int, bool> IsWall, int count)
+        /// <summary> Erken levellerde daha az, ileride slot kapasitesine yakin plate. </summary>
+        private static int ResolvePlateCountForLevel(int levelIndex, SlotCount slotCount)
+        {
+            int openSlots = slotCount switch
+            {
+                SlotCount.Five => 3,
+                SlotCount.Six => 5,
+                SlotCount.Seven => 7,
+                _ => 5
+            };
+
+            int baseCount = Mathf.Max(3, openSlots);
+            int bonus = levelIndex / 25;
+            return Mathf.Clamp(baseCount + bonus, 3, 12);
+        }
+
+        /// <summary> L veya T ic engel sekilleri: kenarlara yakin yerlestirir; grid ortasina duvar konmaz. IsLocked zorluk icin. </summary>
+        private static void AddInternalWalls(CellData[,] cellData, int gridW, int gridH, List<Vector2Int> interior, int count)
         {
             bool IsInCenter(int x, int y)
             {
@@ -542,13 +449,16 @@ namespace RopeWrap.Editor
                 int[][] shape = UnityEngine.Random.value > 0.5f ? lShape : tShape;
                 for (int attempt = 0; attempt < 20 && placed < count; attempt++)
                 {
+                    if (freeList.Count == 0)
+                        break;
+
                     int idx = UnityEngine.Random.Range(0, freeList.Count);
                     Vector2Int root = freeList[idx];
                     bool canPlace = true;
                     foreach (var d in shape)
                     {
                         int nx = root.x + d[0], ny = root.y + d[1];
-                        if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH || IsWall(nx, ny) || !free.Contains(new Vector2Int(nx, ny))
+                        if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH || !free.Contains(new Vector2Int(nx, ny))
                             || IsInCenter(nx, ny))
                         { canPlace = false; break; }
                     }
@@ -598,12 +508,6 @@ namespace RopeWrap.Editor
                 for (int x = 0; x < cellData.GetLength(0); x++)
                     for (int y = 0; y < cellData.GetLength(1); y++)
                         cellData[x, y]?.OnColorLevelChanged();
-            var stitchData = level.StitchData;
-            if (stitchData != null)
-                for (int c = 0; c < stitchData.GetLength(0); c++)
-                    for (int r = 0; r < stitchData.GetLength(1); r++)
-                        if (stitchData[c, r].ColorLevel > 0)
-                            stitchData[c, r].OnColorLevelChanged();
         }
     }
 }

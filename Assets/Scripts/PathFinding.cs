@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,7 +6,7 @@ public class PathFinding
     private readonly int m_Width;
     private readonly int m_Height;
     private readonly Vector2Int[] m_Directions;
-    private Cell[,] m_Cells;
+    private readonly Cell[,] m_Cells;
 
     public PathFinding(int width, int height, Cell[,] cells)
     {
@@ -42,76 +41,53 @@ public class PathFinding
         queue.Enqueue(start);
         visited[start.x, start.y] = true;
 
-        bool isExit = false;
-        Vector2Int exitPoint = new Vector2Int();
+        bool exitReached = false;
+        Vector2Int exitPoint = default;
 
         while (queue.Count > 0)
         {
             Vector2Int current = queue.Dequeue();
 
-            foreach (Vector2Int dir in m_Directions)
+            for (int i = 0; i < m_Directions.Length; i++)
             {
-                Vector2Int next = current + dir;
-                if (next.x >= 0 && next.x < m_Width && next.y >= 0 && next.y < m_Height &&
-                    !m_Cells[next.x, next.y].IsFull &&
-                    !m_Cells[next.x, next.y].IsLocked &&
-                    !visited[next.x, next.y])
-                {
-                    queue.Enqueue(next);
-                    visited[next.x, next.y] = true;
-                    cameFrom[next] = current;
+                Vector2Int next = current + m_Directions[i];
+                if (next.x < 0 || next.x >= m_Width || next.y < 0 || next.y >= m_Height)
+                    continue;
+                if (m_Cells[next.x, next.y].IsFull || m_Cells[next.x, next.y].IsLocked || visited[next.x, next.y])
+                    continue;
 
-                    if (next.y == m_Height - 1)
-                    {
-                        isExit = true;
-                        exitPoint = next;
-                        break;
-                    }
+                queue.Enqueue(next);
+                visited[next.x, next.y] = true;
+                cameFrom[next] = current;
+
+                if (next.y == m_Height - 1)
+                {
+                    exitReached = true;
+                    exitPoint = next;
+                    break;
                 }
             }
 
-
-            if (isExit)
-            {
+            if (exitReached)
                 break;
-            }
         }
 
-        if (isExit)
+        if (!exitReached)
         {
-            Vector2Int current = exitPoint;
-            while (!current.Equals(start))
-            {
-                path.Add(current);
-                current = cameFrom[current];
-            }
-
-            path.Add(start);
-            path.Reverse();
-            isExitFound = true;
+            isExitFound = false;
             return path;
         }
 
-        isExitFound = false;
-        return new List<Vector2Int>();
-    }
-
-    public List<Vector3> PathConvert(List<Vector2Int> path)
-    {
-        List<Vector3> pathConverted = new List<Vector3>();
-
-        foreach (Vector2Int p in path)
+        Vector2Int walk = exitPoint;
+        while (!walk.Equals(start))
         {
-            Vector3 worldPoint = GetWorldPositionFromGridCoordinate(p);
-            pathConverted.Add(worldPoint);
+            path.Add(walk);
+            walk = cameFrom[walk];
         }
 
-        return pathConverted;
-    }
-
-    private Vector3 GetWorldPositionFromGridCoordinate(Vector2Int gridCoordinate)
-    {
-        Cell cell = m_Cells[gridCoordinate.x, gridCoordinate.y];
-        return cell.transform.position;
+        path.Add(start);
+        path.Reverse();
+        isExitFound = true;
+        return path;
     }
 }

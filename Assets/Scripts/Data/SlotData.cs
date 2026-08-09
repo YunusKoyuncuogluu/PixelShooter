@@ -10,7 +10,7 @@ public class SlotData
 
     public SlotCount Count => m_Count;
 
-    /// <summary> İndeks bazlı kilit: m_LockedByIndex[i] == true ise i. slot kilitli. Null veya uyumsuz uzunlukta ise varsayılan zorluk kuralı kullanılır. </summary>
+    /// <summary> Indeks bazli kilit: m_LockedByIndex[i] == true ise i. slot kilitli. Null veya uyumsuz uzunlukta varsayilan zorluk kurali kullanilir. </summary>
     public IReadOnlyList<bool> LockedByIndex => m_LockedByIndex;
 }
 

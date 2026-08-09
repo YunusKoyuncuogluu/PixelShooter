@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using DG.Tweening;
 using Dreamteck.Splines;
 using Grids;
 using UnityEngine;
@@ -22,12 +20,9 @@ public class Tunnel : MonoBehaviour
     public Vector2Int ExitCoordinate => m_ExitCoordinate;
 
     private Direction m_Direction;
-    private TunnelData m_TunnelData;
     private Vector3 m_Position;
     private Transform m_Transform;
     private List<ThreadData> m_ThreadData;
-    private Thread m_Thread;
-    private Sequence m_GoSequence;
 
 
     public void Construct(Direction direction, TunnelData tunnelData, Vector3 position, Vector2Int coordinate)
@@ -35,7 +30,6 @@ public class Tunnel : MonoBehaviour
         m_Transform = transform;
         m_Position = position;
         m_Direction = direction;
-        m_TunnelData = tunnelData;
         m_Coordinate = coordinate;
         m_ExitCoordinate = GetExitCoordinate(direction, coordinate);
         m_Transform.position = m_Position;
@@ -54,7 +48,7 @@ public class Tunnel : MonoBehaviour
 
         if (m_ThreadData.Count >= 1)
         {
-            CreateAndAnimateNewSausage();
+            SpawnAndAnimateTunnelThread();
             UpdateTunnelVisual();
         }
 
@@ -65,7 +59,7 @@ public class Tunnel : MonoBehaviour
         }
     }
 
-    private void CreateAndAnimateNewSausage()
+    private void SpawnAndAnimateTunnelThread()
     {
         Thread thread = m_ThreadManager.CreateTunnelThread(m_ThreadData[0].Color, m_ExitCoordinate);
         thread.transform.localScale = Vector3.zero;
@@ -86,7 +80,7 @@ public class Tunnel : MonoBehaviour
         thread.SetTunnelThread(false);
         thread.SetCoordinate(m_ExitCoordinate);
 
-        thread.transform.gameObject.FollowTo(targetPosition, 5f,
+        thread.transform.gameObject.FollowTo(targetPosition, thread.SlotTravelSpeed,
             onComplete: () =>
             {
                 m_ThreadManager.ControlClickableThreads();

@@ -1,19 +1,13 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Grids;
-using JetBrains.Annotations;
 using LevelManagement;
-using Sirenix.OdinInspector;
 using UnityEngine;
 using Zenject;
 
 public class ThreadManager : MonoBehaviour
 {
-    [Inject] private LevelManager m_LevelManager;
     [Inject] private CellManager m_CellManager;
-    [Inject] private ProjectSettings m_ProjectSettings;
     [Inject] private Thread.Factory m_ThreadFactory;
 
     private Thread[,] m_Threads;
@@ -21,8 +15,6 @@ public class ThreadManager : MonoBehaviour
 
     private int m_Width;
     private int m_Height;
-    private float m_SpaceX;
-    private float m_SpaceY;
 
     public int Width => m_Width;
     public int Height => m_Height;
@@ -44,25 +36,21 @@ public class ThreadManager : MonoBehaviour
 
         InitializeGridPositioner();
         CreateThreads();
-        ConstructClickableSausagesWithDelay();
-    }
-
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            ControlClickableThreads();
-        }
+        RefreshClickableThreadsNextFrame().Forget();
     }
 
     private void InitializeGridPositioner()
     {
         m_Width = m_LevelData.Width;
         m_Height = m_LevelData.Height;
-        m_SpaceX = m_ProjectSettings.CellSpaceX;
-        m_SpaceY = m_ProjectSettings.CellSpaceY;
 
-        m_CellPositioner = new CellPositioner(m_Width, m_Height, m_CellManager.CenterTransform, m_SpaceX, m_SpaceY);
+        m_CellPositioner = new CellPositioner(
+            m_Width,
+            m_Height,
+            m_CellManager.CenterTransform,
+            m_CellManager.CellSpaceX,
+            m_CellManager.CellSpaceY,
+            m_CellManager.GridTopAnchorZ);
         m_PositionList = new List<Vector3>(m_CellPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_CellPositioner.CoordinateList());
         m_Threads = new Thread[m_Width, m_Height];
@@ -101,9 +89,9 @@ public class ThreadManager : MonoBehaviour
         m_CellManager.SetFull(threadCoordinate, true);
     }
 
-    private async void ConstructClickableSausagesWithDelay()
+    private async UniTaskVoid RefreshClickableThreadsNextFrame()
     {
-        await UniTask.DelayFrame(1);
+        await UniTask.DelayFrame(1, cancellationToken: this.GetCancellationTokenOnDestroy());
         ControlClickableThreads();
     }
 
@@ -138,12 +126,10 @@ public class ThreadManager : MonoBehaviour
                 Thread thread = m_Threads[x, y];
                 Vector2Int coordinate = new Vector2Int(x, y);
 
-                List<Vector2Int> pathCoordinates = m_PathFinding.BreadthFirstSearch(coordinate, out bool isExitFound);
-
-                List<Vector3> path = m_PathFinding.PathConvert(pathCoordinates);
+                m_PathFinding.BreadthFirstSearch(coordinate, out bool isExitFound);
 
                 thread.SetClickable(isExitFound);
-                thread.ClickableProcess(path);
+                thread.ClickableProcess();
             }
         }
     }
@@ -153,7 +139,7 @@ public class ThreadManager : MonoBehaviour
 
     public void RemoveThread(Vector2Int coordinate) => m_Threads[coordinate.x, coordinate.y] = null;
 
-    [CanBeNull] public Thread ThreadAt(Vector2Int coordinate)
+    public Thread ThreadAt(Vector2Int coordinate)
     {
         if (coordinate.x < 0 || coordinate.x >= m_Width || coordinate.y < 0 || coordinate.y >= m_Height)
             return null;

@@ -4,8 +4,7 @@ using Zenject;
 namespace RopeWrap.UI
 {
     /// <summary>
-    /// MainMenuScene'de kullanılacak Zenject installer.
-    /// SceneContext'e bu script'i ekleyin (Add Component -> MainMenuSceneInstaller).
+    /// MainMenuScene Zenject installer. SceneContext'e ekleyin.
     /// </summary>
     public class MainMenuSceneInstaller : MonoInstaller<MainMenuSceneInstaller>
     {

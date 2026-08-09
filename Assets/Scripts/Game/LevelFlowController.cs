@@ -7,13 +7,13 @@ using RopeWrap.UI;
 namespace RopeWrap.Game
 {
     /// <summary>
-    /// Level kazanma/kaybetme akışını yönetir. Fabric cleared -> Win (konfeti + success panel).
+    /// Level kazanma/kaybetme akisini yonetir.
     /// Spool area stuck -> Fail panel.
+    /// Fabric temizlenince ConveyorManager uzerinden Win tetiklenir.
     /// </summary>
     public class LevelFlowController : MonoBehaviour
     {
         [Inject] private LevelManager m_LevelManager;
-        [Inject] private FabricManager m_FabricManager;
         [Inject] private SlotManager m_SlotManager;
         [Inject] private LevelResultUI m_LevelResultUI;
         [InjectOptional] private ConfettiPlayer m_ConfettiPlayer;
@@ -26,8 +26,6 @@ namespace RopeWrap.Game
             m_ResultShown = false;
             m_FlowCts = new CancellationTokenSource();
 
-            if (m_FabricManager != null)
-                m_FabricManager.OnFabricCleared += OnFabricCleared;
             if (m_SlotManager != null)
                 m_SlotManager.OnSpoolAreaStuck += OnSpoolAreaStuck;
         }
@@ -35,34 +33,14 @@ namespace RopeWrap.Game
         private void OnDestroy()
         {
             m_FlowCts?.Cancel();
-            if (m_FabricManager != null)
-                m_FabricManager.OnFabricCleared -= OnFabricCleared;
             if (m_SlotManager != null)
                 m_SlotManager.OnSpoolAreaStuck -= OnSpoolAreaStuck;
         }
 
-        private void OnFabricCleared()
+        /// <summary> Fabric clear + conveyor win kosulu saglandiginda cagirilir. </summary>
+        public void TriggerWin()
         {
             if (m_ResultShown) return;
-            TryShowWinWhenFabricAndSpoolsDone().Forget();
-        }
-
-        /// <summary> İp (fabric) bittiğinde hemen win gösterme; makaralar da bitene kadar bekle (1 makara = 3 ip, hepsi aynı anda bitmeli). </summary>
-        private async UniTaskVoid TryShowWinWhenFabricAndSpoolsDone()
-        {
-            const int maxWaitMs = 3000;
-            const int checkIntervalMs = 150;
-            int elapsed = 0;
-            while (elapsed < maxWaitMs)
-            {
-                if (m_SlotManager != null && m_SlotManager.SpoolCount == 0)
-                    break;
-                await UniTask.Delay(checkIntervalMs);
-                elapsed += checkIntervalMs;
-            }
-            if (m_ResultShown) return;
-            if (m_SlotManager != null && m_SlotManager.SpoolCount > 0)
-                return;
             m_ResultShown = true;
             PlayWinSequenceAsync(m_FlowCts.Token).Forget();
         }
@@ -87,9 +65,6 @@ namespace RopeWrap.Game
             TriggerFail();
         }
 
-        /// <summary>
-        /// Fail (Give Up veya SpoolArea stuck) çağrıldığında.
-        /// </summary>
         public void TriggerFail()
         {
             if (m_ResultShown) return;

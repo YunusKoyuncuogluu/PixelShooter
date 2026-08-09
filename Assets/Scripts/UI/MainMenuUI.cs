@@ -2,13 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Zenject;
-using RopeWrap.Core;
 
 namespace RopeWrap.UI
 {
     /// <summary>
     /// Main Menu sahnesi UI. Play, Settings, Sound toggle vb.
-    /// Canvas ve butonları Inspector'dan atayın veya runtime'da oluşturulur.
+    /// Canvas ve butonlari Inspector'dan atayin veya runtime'da olusturulur.
     /// </summary>
     public class MainMenuUI : MonoBehaviour
     {
@@ -28,11 +27,16 @@ namespace RopeWrap.UI
 
         private void Awake()
         {
-            if (m_PlayButton == null) TryFindOrCreatePlayButton();
-            if (m_PlayButton != null) m_PlayButton.onClick.AddListener(OnPlayClicked);
-            if (m_SettingsButton != null) m_SettingsButton.onClick.AddListener(OnSettingsClicked);
-            if (m_SoundButton != null) m_SoundButton.onClick.AddListener(OnSoundClicked);
-            if (m_SettingsPanel != null) m_SettingsPanel.SetActive(false);
+            if (m_PlayButton == null)
+                TryFindOrCreatePlayButton();
+            if (m_PlayButton != null)
+                m_PlayButton.onClick.AddListener(OnPlayClicked);
+            if (m_SettingsButton != null)
+                m_SettingsButton.onClick.AddListener(OnSettingsClicked);
+            if (m_SoundButton != null)
+                m_SoundButton.onClick.AddListener(OnSoundClicked);
+            if (m_SettingsPanel != null)
+                m_SettingsPanel.SetActive(false);
             if (m_LevelText != null && m_LevelManager != null)
                 m_LevelText.text = "Level " + (m_LevelManager.CurrentLevelIndex + 1);
         }
@@ -45,21 +49,23 @@ namespace RopeWrap.UI
         private void OnSettingsClicked()
         {
             m_SettingsOpen = !m_SettingsOpen;
-            if (m_SettingsPanel != null) m_SettingsPanel.SetActive(m_SettingsOpen);
+            if (m_SettingsPanel != null)
+                m_SettingsPanel.SetActive(m_SettingsOpen);
         }
 
         private void OnSoundClicked()
         {
             m_SoundOn = !m_SoundOn;
             AudioListener.volume = m_SoundOn ? 1f : 0f;
-            if (m_SoundButton != null && m_SoundButton.GetComponentInChildren<TextMeshProUGUI>(true) is { } t)
-                t.text = m_SoundOn ? "Sound: ON" : "Sound: OFF";
+            if (m_SoundButton != null && m_SoundButton.GetComponentInChildren<TextMeshProUGUI>(true) is { } label)
+                label.text = m_SoundOn ? "Sound: ON" : "Sound: OFF";
         }
 
         private void TryFindOrCreatePlayButton()
         {
-            var b = GetComponentInChildren<Button>();
-            if (b != null) m_PlayButton = b;
+            Button button = GetComponentInChildren<Button>();
+            if (button != null)
+                m_PlayButton = button;
         }
     }
 }

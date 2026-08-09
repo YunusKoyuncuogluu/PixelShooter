@@ -1,108 +1,196 @@
-using UnityEngine;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
+using UnityEngine;
 
 public static class SplineExtensions
 {
-    private const float DefaultSplineEndZ = 5.68f;
-
     /// <summary>
-    /// Objeye spline oluşturur, takip ettirir ve bitince otomatik temizler.
+    /// Slot / hedef Transform'a FollowTo. Bitis noktasi target.position (tam slot konumu).
     /// </summary>
     public static SplineFollower FollowTo(
         this GameObject obj,
         Transform target,
         float speed,
-        Spline.Type splineType = Spline.Type.BSpline,
-        System.Action onComplete = null,
-        System.Action<float> onUpdate = null)
+        Action onComplete = null,
+        Action<float> onUpdate = null,
+        Spline.Type splineType = Spline.Type.BSpline)
     {
-        // --- Spline Computer ---
-        GameObject splineObject = new GameObject("DynamicSpline_" + obj.name);
-        SplineComputer splineComputer = splineObject.AddComponent<SplineComputer>();
-        splineComputer.type = splineType;
-
-        // --- Spline Points ---
-        Vector3 start = obj.transform.position;
-        Vector3 end = new Vector3(target.position.x, target.position.y, DefaultSplineEndZ);
-        Vector3 mid = (start + end) / 2f + new Vector3(0, Random.Range(4.5f, 7.5f), 0);
-
-        SplinePoint[] points = new SplinePoint[3];
-        points[0] = new SplinePoint(start);
-        points[1] = new SplinePoint(mid);
-        points[2] = new SplinePoint(end);
-
-        splineComputer.SetPoints(points);
-
-        // --- Spline Follower ---
-        SplineFollower follower = obj.AddComponent<SplineFollower>();
-        follower.spline = splineComputer;
-        follower.followSpeed = speed;
-        follower.wrapMode = SplineFollower.Wrap.Default;
-        follower.motion.applyRotation = false;
-
-        follower.onMotionApplied += () =>
-        {
-            float progress = (float)follower.GetPercent();
-            onUpdate?.Invoke(progress);
-        };
-
-        // --- Bitiş kontrolü ---
-        follower.onEndReached += (double f) =>
-        {
-            onComplete?.Invoke(); // dışarıya haber ver
-            Object.Destroy(follower); // follower temizle
-            Object.Destroy(splineObject); // spline temizle
-        };
-
-        return follower;
+        Vector3 end = target.position;
+        Vector3 mid = (obj.transform.position + end) * 0.5f + new Vector3(0f, UnityEngine.Random.Range(4.5f, 7.5f), 0f);
+        return FollowToInternal(obj, end, mid, speed, onComplete, onUpdate, splineType);
     }
-    
+
     public static SplineFollower FollowTo(
         this GameObject obj,
         Vector3 targetPos,
         float speed,
-        Spline.Type splineType = Spline.Type.BSpline,
-        System.Action onComplete = null,
-        System.Action<float> onUpdate = null)
+        Action onComplete = null,
+        Action<float> onUpdate = null,
+        Spline.Type splineType = Spline.Type.BSpline)
     {
-        // --- Spline Computer ---
+        Vector3 mid = (obj.transform.position + targetPos) * 0.5f + new Vector3(0f, 0.5f, 0f);
+        return FollowToInternal(obj, targetPos, mid, speed, onComplete, onUpdate, splineType);
+    }
+
+    /// <summary>
+    /// Plate seat vb. hedefler icin UniTask'li FollowTo (iptal destekli).
+    /// </summary>
+    public static async UniTask FollowToAsync(
+        this GameObject obj,
+        Vector3 targetPos,
+        float speed,
+        float arcHeight,
+        Action<float> onUpdate,
+        CancellationToken cancellationToken,
+        Spline.Type splineType = Spline.Type.BSpline)
+    {
+        if (obj == null)
+            return;
+
+        Vector3 start = obj.transform.position;
+        float height = Mathf.Max(0f, arcHeight);
+        Vector3 mid = (start + targetPos) * 0.5f + new Vector3(0f, height, 0f);
+
+        UniTaskCompletionSource completion = new UniTaskCompletionSource();
+        FollowToInternal(
+            obj,
+            targetPos,
+            mid,
+            speed,
+            () => completion.TrySetResult(),
+            onUpdate,
+            splineType);
+
+        CancellationTokenRegistration registration = default;
+        try
+        {
+            if (cancellationToken.CanBeCanceled)
+            {
+                registration = cancellationToken.Register(() =>
+                {
+                    ClearExistingFollowers(obj);
+                    completion.TrySetCanceled();
+                });
+            }
+
+            await completion.Task;
+        }
+        catch (OperationCanceledException)
+        {
+            ClearExistingFollowers(obj);
+            throw;
+        }
+        finally
+        {
+            registration.Dispose();
+            if (obj != null)
+            {
+                ClearExistingFollowers(obj);
+                obj.transform.position = targetPos;
+            }
+        }
+    }
+
+    private static SplineFollower FollowToInternal(
+        GameObject obj,
+        Vector3 end,
+        Vector3 mid,
+        float speed,
+        Action onComplete,
+        Action<float> onUpdate,
+        Spline.Type splineType)
+    {
+        float resolvedSpeed = Mathf.Max(0.01f, speed);
+        ClearExistingFollowers(obj);
+
         GameObject splineObject = new GameObject("DynamicSpline_" + obj.name);
         SplineComputer splineComputer = splineObject.AddComponent<SplineComputer>();
         splineComputer.type = splineType;
 
-        // --- Spline Points ---
         Vector3 start = obj.transform.position;
-        Vector3 end = targetPos;
-        Vector3 mid = (start + end) / 2f + new Vector3(0, 0.5f, 0);
-
         SplinePoint[] points = new SplinePoint[3];
         points[0] = new SplinePoint(start);
         points[1] = new SplinePoint(mid);
         points[2] = new SplinePoint(end);
-
         splineComputer.SetPoints(points);
 
-        // --- Spline Follower ---
         SplineFollower follower = obj.AddComponent<SplineFollower>();
+        follower.follow = false;
         follower.spline = splineComputer;
-        follower.followSpeed = speed;
+        follower.followMode = SplineFollower.FollowMode.Uniform;
         follower.wrapMode = SplineFollower.Wrap.Default;
         follower.motion.applyRotation = false;
+        follower.followSpeed = resolvedSpeed;
+        follower.SetPercent(0.0);
+        follower.follow = true;
 
-        follower.onMotionApplied += () =>
+        Action<double> endHandler = null;
+        endHandler = _ =>
         {
-            float progress = (float)follower.GetPercent();
-            onUpdate?.Invoke(progress);
+            follower.onEndReached -= endHandler;
+            follower.follow = false;
+
+            SplineComputer boundSpline = follower.spline;
+            follower.spline = null;
+
+            if (follower != null)
+                UnityEngine.Object.DestroyImmediate(follower);
+            if (boundSpline != null)
+                UnityEngine.Object.DestroyImmediate(boundSpline.gameObject);
+            else if (splineObject != null)
+                UnityEngine.Object.DestroyImmediate(splineObject);
+
+            if (obj != null)
+                obj.transform.position = end;
+
+            ClearSpoolFollowerCache(obj);
+            onComplete?.Invoke();
         };
 
-        // --- Bitiş kontrolü ---
-        follower.onEndReached += (double f) =>
+        follower.onEndReached += endHandler;
+        follower.onMotionApplied += () =>
         {
-            onComplete?.Invoke(); // dışarıya haber ver
-            Object.Destroy(follower); // follower temizle
-            Object.Destroy(splineObject); // spline temizle
+            if (follower == null)
+                return;
+            onUpdate?.Invoke((float)follower.GetPercent());
         };
 
         return follower;
+    }
+
+    public static void ClearExistingFollowers(GameObject obj)
+    {
+        if (obj == null)
+            return;
+
+        SplineFollower[] existing = obj.GetComponents<SplineFollower>();
+        for (int i = 0; i < existing.Length; i++)
+        {
+            SplineFollower follower = existing[i];
+            if (follower == null)
+                continue;
+
+            follower.follow = false;
+            if (follower.spline != null)
+            {
+                SplineComputer spline = follower.spline;
+                follower.spline = null;
+                if (spline != null && spline.gameObject.name.StartsWith("DynamicSpline_"))
+                    UnityEngine.Object.DestroyImmediate(spline.gameObject);
+            }
+
+            UnityEngine.Object.DestroyImmediate(follower);
+        }
+
+        ClearSpoolFollowerCache(obj);
+    }
+
+    private static void ClearSpoolFollowerCache(GameObject obj)
+    {
+        SpoolController spool = obj.GetComponent<SpoolController>();
+        if (spool != null)
+            spool.InvalidateFollowerCache();
     }
 }

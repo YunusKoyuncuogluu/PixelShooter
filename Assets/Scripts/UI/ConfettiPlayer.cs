@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RopeWrap.UI
 {
     /// <summary>
-    /// Win anında konfeti oynatır. Inspector'da ParticleSystem atanabilir; yoksa kısa bekleme yapar.
+    /// Win aninda konfeti oynatir. Inspector'da ParticleSystem atanabilir; yoksa kisa bekleme yapar.
     /// </summary>
     public class ConfettiPlayer : MonoBehaviour
     {
@@ -20,11 +20,10 @@ namespace RopeWrap.UI
                 m_ConfettiParticles.Play();
                 float duration = m_PlayDuration > 0f ? m_PlayDuration : m_ConfettiParticles.main.duration;
                 await UniTask.Delay((int)(duration * 1000), cancellationToken: ct);
+                return;
             }
-            else
-            {
-                await UniTask.Delay(500, cancellationToken: ct);
-            }
+
+            await UniTask.Delay(500, cancellationToken: ct);
         }
     }
 }

@@ -1,101 +1,93 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using LevelManagement;
 using UnityEngine;
 using Zenject;
 
 public class LevelManager : IInitializable
 {
-    private const string m_CurrentLevelPref = "CurrentLevel";
-    private ScriptableLevelBase[] m_ScriptableLevelDataArray;
-    private int m_CurrentLevelIndex;
+    private const string CurrentLevelPref = "CurrentLevel";
+    private const string LevelDataPath = "Levels/";
 
-    [Inject] private ProjectSettings m_ProjectSettings;
+    private ScriptableLevelBase[] scriptableLevelDataArray;
+    private int currentLevelIndex;
 
-    public int CurrentLevelIndex => m_CurrentLevelIndex;
-    public string CurrentLevelName => $"Level Index ===>> {m_CurrentLevelIndex + 1}";
-    public int TotalLevelCount => m_ScriptableLevelDataArray.Length;
-    public ILevelData CurrentLevelData => m_ScriptableLevelDataArray[GetCurrentLevelIndex()];
-    public ILevelData[] AllLevelData => m_ScriptableLevelDataArray;
-    public static LevelManager Instance;
+    public int CurrentLevelIndex => currentLevelIndex;
+    public string CurrentLevelName => $"Level Index ===>> {currentLevelIndex + 1}";
+    public int TotalLevelCount => scriptableLevelDataArray.Length;
+    public ILevelData CurrentLevelData => scriptableLevelDataArray[ResolveClampedLevelIndex()];
+    public ILevelData[] AllLevelData => scriptableLevelDataArray;
 
-    private int GetCurrentLevelIndex()
+    /// <summary>
+    /// Index sinir disiysa level listesinde dongusel (wrap) index doner.
+    /// </summary>
+    private int ResolveClampedLevelIndex()
     {
-        if (m_CurrentLevelIndex < 0)
+        if (scriptableLevelDataArray == null || scriptableLevelDataArray.Length == 0)
             return 0;
 
-        if (m_CurrentLevelIndex < TotalLevelCount)
-            return m_CurrentLevelIndex;
+        if (currentLevelIndex < 0)
+            return 0;
 
-        if ((TotalLevelCount - 1) >= TotalLevelCount)
-            return m_CurrentLevelIndex % TotalLevelCount;
+        if (currentLevelIndex < TotalLevelCount)
+            return currentLevelIndex;
 
-        int modIndex = m_CurrentLevelIndex % TotalLevelCount + (TotalLevelCount - 1);
-
-        if (modIndex < 0)
-            return TotalLevelCount + modIndex;
-
-        if (modIndex < TotalLevelCount)
-            return modIndex;
-
-        if (modIndex >= TotalLevelCount)
-            return modIndex - TotalLevelCount;
-
-        return modIndex;
+        return currentLevelIndex % TotalLevelCount;
     }
 
     void IInitializable.Initialize()
     {
-        int levelIndex = CurrentLevelIndex + 1;
-
-        if (PlayerPrefs.GetInt("LevelNumber" + levelIndex, 0) == 0)
-        {
-            PlayerPrefs.SetInt("LevelNumber" + levelIndex, 1);
-            Debug.Log($"<color=green> Level {levelIndex} initialized. </color>");
-        }
-
-        m_CurrentLevelIndex = LoadLevel();
-        m_ScriptableLevelDataArray = ScriptableLevelBase.LoadAll();
+        currentLevelIndex = LoadLevel();
+        scriptableLevelDataArray = Resources.LoadAll<ScriptableLevelBase>(LevelDataPath);
         SortLevelsByIndex();
-        Instance = this;
+
+        int levelNumber = currentLevelIndex + 1;
+        string levelKey = "LevelNumber" + levelNumber;
+        if (PlayerPrefs.GetInt(levelKey, 0) == 0)
+            PlayerPrefs.SetInt(levelKey, 1);
     }
 
     public void SetLevel(int levelIndex)
     {
-        m_CurrentLevelIndex = levelIndex;
+        currentLevelIndex = levelIndex;
         SaveLevel();
     }
 
-    private void SaveLevel() => PlayerPrefs.SetInt(m_CurrentLevelPref, m_CurrentLevelIndex);
-    private static int LoadLevel() => PlayerPrefs.GetInt(m_CurrentLevelPref, 0);
+    private void SaveLevel() => PlayerPrefs.SetInt(CurrentLevelPref, currentLevelIndex);
+    private int LoadLevel() => PlayerPrefs.GetInt(CurrentLevelPref, 0);
 
-    /// <summary> Resources.LoadAll sırası belirsiz; Level_1, Level_2, ... sırasına göre sırala. </summary>
+    /// <summary> Resources.LoadAll sirasi belirsiz; Level_1, Level_2, ... sirasina gore sirala. </summary>
     private void SortLevelsByIndex()
     {
-        if (m_ScriptableLevelDataArray == null || m_ScriptableLevelDataArray.Length == 0) return;
-        m_ScriptableLevelDataArray = m_ScriptableLevelDataArray
-            .OrderBy(level => ParseLevelIndex(level.name))
-            .ToArray();
+        if (scriptableLevelDataArray == null || scriptableLevelDataArray.Length == 0)
+            return;
+
+        List<ScriptableLevelBase> sorted = new List<ScriptableLevelBase>(scriptableLevelDataArray.Length);
+        for (int i = 0; i < scriptableLevelDataArray.Length; i++)
+            sorted.Add(scriptableLevelDataArray[i]);
+
+        sorted.Sort((a, b) => ParseLevelIndex(a.name).CompareTo(ParseLevelIndex(b.name)));
+        scriptableLevelDataArray = sorted.ToArray();
     }
 
-    private static int ParseLevelIndex(string levelName)
+    private int ParseLevelIndex(string levelName)
     {
-        if (string.IsNullOrEmpty(levelName)) return 0;
+        if (string.IsNullOrEmpty(levelName))
+            return 0;
+
         const string prefix = "Level_";
-        if (!levelName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return 0;
+        if (!levelName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return 0;
+
         string num = levelName.Substring(prefix.Length);
         return int.TryParse(num, out int index) ? index : 0;
     }
 
-    public void IncreaseLevel() => SetLevel(m_CurrentLevelIndex + 1);
-    public void DecreaseLevel() => SetLevel(m_CurrentLevelIndex - 1);
+    public void IncreaseLevel() => SetLevel(currentLevelIndex + 1);
+    public void DecreaseLevel() => SetLevel(currentLevelIndex - 1);
 
     public void CompleteCurrentLevel()
     {
-        int levelIndex = m_CurrentLevelIndex + 1;
-        Debug.Log($"<color=green> Win Level {levelIndex}. </color>");
         ILevelData currentLevelData = CurrentLevelData;
         currentLevelData.Complete(0);
         IncreaseLevel();
@@ -105,7 +97,5 @@ public class LevelManager : IInitializable
 
     public void FailCurrentLevel()
     {
-        int levelIndex = m_CurrentLevelIndex + 1;
-        Debug.Log($"<color=red>Fail Level {levelIndex}. </color>");
     }
 }

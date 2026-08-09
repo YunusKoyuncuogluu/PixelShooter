@@ -4,8 +4,7 @@ using Zenject;
 namespace RopeWrap.Core
 {
     /// <summary>
-    /// InitializeScene'de çalışır. ProjectContext yüklendikten sonra Main Menu'ye geçer.
-    /// Bu script'i Init sahnesinde bir GameObject'e ekleyin.
+    /// InitializeScene'de calisir. ProjectContext yuklendikten sonra Main Menu'ye gecer.
     /// </summary>
     public class InitBootstrap : MonoBehaviour
     {

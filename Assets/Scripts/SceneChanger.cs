@@ -1,3 +1,4 @@
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using RopeWrap.Core;
 
@@ -21,15 +22,15 @@ public class SceneChanger
             onComplete?.Invoke();
             return;
         }
-        var op = SceneManager.LoadSceneAsync(sceneName);
-        if (op == null)
+
+        AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName);
+        if (operation == null)
         {
             onComplete?.Invoke();
             return;
         }
+
         if (onComplete != null)
-        {
-            op.completed += _ => onComplete.Invoke();
-        }
+            operation.completed += _ => onComplete.Invoke();
     }
 }

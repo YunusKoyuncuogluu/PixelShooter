@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Grids;
 using LevelManagement;
 using UnityEngine;
@@ -9,7 +7,6 @@ using Zenject;
 public class TunnelManager : MonoBehaviour
 {
     [Inject] private Tunnel.Factory m_TunnelFactory;
-    [Inject] private ProjectSettings m_ProjectSettings;
     [Inject] private CellManager m_CellManager;
     [Inject] private ThreadManager m_ThreadManager;
 
@@ -19,35 +16,33 @@ public class TunnelManager : MonoBehaviour
     private Tunnel[,] m_Tunnels;
     public Tunnel[,] Tunnels => m_Tunnels;
 
-    private LevelData m_LevelData;
     private CellData[,] m_CellData;
     private CellPositioner m_CellPositioner;
     private int m_Width;
     private int m_Height;
-    private float m_SpaceX;
-    private float m_SpaceY;
     private List<Vector3> m_PositionList;
     private List<Vector2Int> m_CoordinateList;
-    private List<TunnelData> m_TunneDatalList;
-
+    private List<TunnelData> tunnelDataList;
 
     public void Construct(LevelData levelData)
     {
         levelData.MigrateGridYIfNeeded();
-        m_LevelData = levelData;
-        m_TunneDatalList = new List<TunnelData>(levelData.TunnelThreadData);
+        tunnelDataList = new List<TunnelData>(levelData.TunnelThreadData);
         m_Width = levelData.Width;
         m_Height = levelData.Height;
-        m_SpaceX = m_ProjectSettings.CellSpaceX;
-        m_SpaceY = m_ProjectSettings.CellSpaceY;
         m_CellData = levelData.CellData;
         CreateTunnels();
     }
 
-
     private void CreateTunnels()
     {
-        m_CellPositioner = new CellPositioner(m_Width, m_Height, m_CenterTransform, m_SpaceX, m_SpaceY);
+        m_CellPositioner = new CellPositioner(
+            m_Width,
+            m_Height,
+            m_CenterTransform,
+            m_CellManager.CellSpaceX,
+            m_CellManager.CellSpaceY,
+            m_CellManager.GridTopAnchorZ);
         m_PositionList = new List<Vector3>(m_CellPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_CellPositioner.CoordinateList());
         CreateTunnel(m_Width, m_Height);
@@ -70,8 +65,8 @@ public class TunnelManager : MonoBehaviour
             m_CellManager.SetFull(tunnelCoordinate, true);
             Tunnel tunnel = m_TunnelFactory.Create();
             tunnel.transform.SetParent(transform);
-            TunnelData tunnelData = m_TunneDatalList[0];
-            m_TunneDatalList.RemoveAt(0);
+            TunnelData tunnelData = tunnelDataList[0];
+            tunnelDataList.RemoveAt(0);
             tunnel.Construct(cellData.Direction, tunnelData, tunnelPosition, tunnelCoordinate);
             m_Tunnels[tunnelCoordinate.x, tunnelCoordinate.y] = tunnel;
         }

@@ -4,7 +4,7 @@ using Zenject;
 namespace RopeWrap.Core
 {
     /// <summary>
-    /// InitializeScene'de SceneContext'e ekleyin. InitBootstrap'ı hierarchy'den bağlar.
+    /// InitializeScene SceneContext installer. InitBootstrap'i hierarchy'den baglar.
     /// </summary>
     public class InitSceneInstaller : MonoInstaller<InitSceneInstaller>
     {

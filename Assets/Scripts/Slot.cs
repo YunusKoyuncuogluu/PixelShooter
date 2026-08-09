@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -13,16 +11,15 @@ public class Slot : MonoBehaviour
 
     public bool IsLocked => m_IsLocked;
     public bool IsFull => m_IsFull;
-    /// <summary> Fabric grid'deki sütun indeksi (GetBottomNode ile eşleşir). </summary>
     public int ColumnIndex => m_ColumnIndex;
 
-    private Transform m_Transform;
+    private Transform cachedTransform;
 
     public void Construct(Vector3 localPosition, int columnIndex)
     {
-        m_Transform = transform;
+        cachedTransform = transform;
         m_ColumnIndex = columnIndex;
-        m_Transform.localPosition = localPosition;
+        cachedTransform.localPosition = localPosition;
         m_LockedTransform.gameObject.SetActive(m_IsLocked);
     }
 

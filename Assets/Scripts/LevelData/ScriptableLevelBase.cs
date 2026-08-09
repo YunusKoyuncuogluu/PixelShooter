@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -8,8 +6,6 @@ namespace LevelManagement
     [HideMonoScript]
     public abstract class ScriptableLevelBase : SerializedScriptableObject, ILevelData
     {
-        private const string LevelDataPath = "Levels/";
-
         [SerializeField, FoldoutGroup("Base Level Data")]
         private bool m_IsUnlocked;
 
@@ -45,7 +41,5 @@ namespace LevelManagement
         }
 
         void ILevelData.Unlock() => m_IsUnlocked = true;
-
-        public static ScriptableLevelBase[] LoadAll() => Resources.LoadAll<ScriptableLevelBase>(LevelDataPath);
     }
 }

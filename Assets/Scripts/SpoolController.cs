@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -6,296 +5,630 @@ using Dreamteck.Splines;
 using UnityEngine;
 using Zenject;
 
+/// <summary>
+/// Makara: kapali conveyor spline uzerinde DURMADAN gezer (octopus multi-wind).
+/// Ayni anda birden fazla ip atabilir; kapasite asimini inProgressWinds ile onler.
+/// </summary>
 public class SpoolController : MonoBehaviour
 {
-    private const int k_NodesPerSpool = 3;
+    [Inject] private FabricManager fabricManager;
+    [InjectOptional] private ConveyorManager conveyorManager;
+    [InjectOptional] private PlateQueueManager plateQueueManager;
+    [Inject] private SlotManager slotManager;
 
-    [Inject] private FabricManager m_FabricManager;
-    [Inject] private SlotManager m_SlotManager;
-    [Inject] private ProjectSettings m_ProjectSettings;
+    [Header("Capacity")]
+    [SerializeField] private int maxCapacity = 10;
 
-    [Header("Unravel")]
-    [SerializeField] private Material m_ThreadMaterial;
-    [SerializeField] [Min(0.3f)] private float m_WindingVisibleDuration = 2.2f;
-    [SerializeField] [Range(0.5f, 4f)] private float m_WaveSpeed = 1.6f;
-    [SerializeField] [Range(0.1f, 1f)] private float m_WaveAmplitude = 0.52f;
+    [Header("Search / Fire")]
+    [SerializeField] private float searchRadius = 4f;
+    [SerializeField] private float fireCooldown = 0.55f;
+    [SerializeField] private float windDuration = 0.7f;
+    [SerializeField] private float minOrbitDuration = 1.8f;
+    [Tooltip("Hizali serit atlantiysa aradaki pikselleri yakalamak icin kisa bekleme.")]
+    [SerializeField] private float laneCatchUpCooldown = 0.08f;
+
+    [Header("Visual Thread")]
+    [SerializeField] private Material threadMaterial;
+    [SerializeField] private float threadWidth = 0.05f;
 
     [Header("Fill UI")]
-    [SerializeField] private SpoolFillUI m_SpoolFillUI;
+    [SerializeField] private SpoolFillUI spoolFillUI;
 
     [Header("Disappear")]
-    [SerializeField] private float m_DisappearDuration = 0.35f;
+    [SerializeField] private float disappearDuration = 0.35f;
 
-    private GameObject m_SplinesRoot;
-    private readonly List<SplineComputer> m_SplineComputers = new List<SplineComputer>();
-    private readonly List<Vector3> m_BaseMidPoints = new List<Vector3>();
-    private readonly List<Vector3> m_InitialEndPositions = new List<Vector3>();
-    private readonly List<StitchNode> m_TargetNodes = new List<StitchNode>();
-    private float m_WindingStartTime = -1f;
-    private CancellationTokenSource m_WindingCts;
-    private Slot m_CurrentUnravelSlot;
-    private int m_FillCount;
-    /// <summary> 0..k_NodesPerSpool. Sıralama için: yüksek progress önce sarılsın ki makara çabuk %100 olsun. </summary>
-    public int FillCount => m_FillCount;
-    private bool m_UnravelInProgress;
-    public bool IsWinding => m_UnravelInProgress;
-    private SpoolFillUI m_CachedFillUI;
+    private Color32 spoolColor;
+    private short spoolPaletteId = -1;
+    private int currentFill;
+    /// <summary>
+    /// Ucusta olan ipler. Atis sarti: (currentFill + inProgressWinds) &lt; maxCapacity.
+    /// </summary>
+    private int inProgressWinds;
+    private bool isOrbitRoutine;
+    private bool orbitCompleted;
+    private bool isOnConveyor;
+    /// <summary> Slot'ta plate bekliyor veya boarding animasyonunda. </summary>
+    private bool isAwaitingDeparture;
+    private float conveyorEnterTime;
+    private float nextFireTime;
+    /// <summary> Son basarili claim sutun/satiri; atlanan seritleri doldurmak icin. </summary>
+    private int lastClaimedLane = int.MinValue;
+    private int lastApproachSide = int.MinValue;
+
+    private SplineFollower cachedFollower;
+    private CancellationTokenSource travelCts;
+    private SpoolFillUI cachedFillUI;
+    private GeneralColor generalColor;
+
+    private LineRenderer[] windLinePool;
+    private bool[] windLineInUse;
+    private Material runtimeLineMaterial;
+
+    public int MaxCapacity => Mathf.Max(1, maxCapacity);
+    public SplineFollower CachedFollower => cachedFollower;
 
     /// <summary>
-    /// Slotlardaki makaralar sürekli bunu çağırır (SlotManager periyodik + OnFabricBottomRowChanged).
-    /// En altta rengimle eşleşen ip varsa hemen sarar (1–3 sütun aynı anda). isRetry sadece kendi devam turumuz için.
+    /// Plate hazirsa hemen boarding baslatir (tiklama aninda senkron animasyon).
+    /// Hazir degilse false — caller slot animasyonuna duser.
     /// </summary>
-    public void TryStartUnravel(Slot slot, GeneralColor spoolColor, bool isRetry = false)
+    public bool TryBeginDeparture(Slot slot, GeneralColor spoolGeneralColor)
     {
-        if (slot == null || m_FabricManager == null)
-            return;
-        if (m_UnravelInProgress)
-            return;
+        if (isOrbitRoutine || isOnConveyor || isAwaitingDeparture)
+            return false;
 
-        int maxToTake = k_NodesPerSpool - m_FillCount;
-        if (maxToTake <= 0)
-            return;
+        if (fabricManager == null || conveyorManager == null)
+            return false;
 
-        List<int> columns = m_FabricManager.GetColumnsWithColorAtBottomRow(spoolColor, maxToTake);
-        if (columns == null || columns.Count == 0)
-            return;
+        if (plateQueueManager == null || !plateQueueManager.HasAvailablePlate)
+            return false;
 
-        m_UnravelInProgress = true;
-        m_CurrentUnravelSlot = slot;
-        // Sadece tamamen boş makarada (yeni oturum) doluluk ve UI sıfırlanır. Kısmen doluysa sayacı koruyoruz.
-        if (m_FillCount == 0)
+        generalColor = spoolGeneralColor;
+        spoolColor = fabricManager.ResolveSpoolColor(spoolGeneralColor);
+        spoolPaletteId = fabricManager.ResolvePaletteId(spoolGeneralColor);
+
+        if (spoolPaletteId < 0)
+            return false;
+
+        if (currentFill <= 0)
         {
+            currentFill = 0;
+            inProgressWinds = 0;
             ShowFillUI(true);
-            m_CachedFillUI = GetFillUI();
-            if (m_CachedFillUI != null)
-                m_CachedFillUI.SetTargetPercent(0f);
+            SpoolFillUI ui = GetFillUI();
+            if (ui != null)
+                ui.SetTargetPercent(0f);
         }
 
-        m_WindingCts?.Cancel();
-        m_WindingCts = new CancellationTokenSource();
-        StartWindingAsync(spoolColor, m_WindingCts.Token).Forget();
+        isAwaitingDeparture = true;
+        StartUnravelAsync(slot).Forget();
+        return true;
     }
 
-    private async UniTaskVoid StartWindingAsync(GeneralColor spoolColor, CancellationToken ct)
+    /// <summary>
+    /// Slot yerlesim animasyonu bitince Thread tarafindan cagirilir.
+    /// Plate yoksa slotta bekler; plate gelince boarding + conveyor.
+    /// </summary>
+    public void TryStartUnravel(Slot slot, GeneralColor spoolGeneralColor)
     {
-        if (m_FabricManager == null)
+        if (isOrbitRoutine || isOnConveyor || isAwaitingDeparture)
             return;
 
-        int maxToTake = k_NodesPerSpool - m_FillCount;
-        if (maxToTake <= 0) return;
-
-        List<int> columns = m_FabricManager.GetColumnsWithColorAtBottomRow(spoolColor, maxToTake);
-        if (columns == null || columns.Count == 0)
+        if (fabricManager == null || conveyorManager == null)
             return;
 
-        var targetNodes = new List<StitchNode>();
-        foreach (int col in columns)
+        generalColor = spoolGeneralColor;
+        spoolColor = fabricManager.ResolveSpoolColor(spoolGeneralColor);
+        spoolPaletteId = fabricManager.ResolvePaletteId(spoolGeneralColor);
+
+        if (spoolPaletteId < 0)
         {
-            StitchNode node = m_FabricManager.GetBottomNode(col);
-            if (node != null && node.Color == spoolColor)
-                targetNodes.Add(node);
-        }
-        if (targetNodes.Count == 0)
+            Debug.LogWarning(
+                $"[SpoolController] GeneralColor {spoolGeneralColor} facade palette'te yok. Sarma atlanir.");
             return;
+        }
+
+        if (fabricManager.OpaqueRemaining <= 0)
+        {
+            Debug.LogError(
+                "[SpoolController] Fabric'de opak piksel yok. LevelData > Fabric Pixel bake edin.");
+        }
+
+        if (currentFill <= 0)
+        {
+            currentFill = 0;
+            inProgressWinds = 0;
+            ShowFillUI(true);
+            SpoolFillUI ui = GetFillUI();
+            if (ui != null)
+                ui.SetTargetPercent(0f);
+        }
+
+        isAwaitingDeparture = true;
+        StartUnravelAsync(slot).Forget();
+    }
+
+    private async UniTaskVoid StartUnravelAsync(Slot slot)
+    {
+        CancellationToken ct = this.GetCancellationTokenOnDestroy();
 
         try
         {
-            foreach (int col in columns)
-                m_FabricManager.NotifyUnravelStarted(col);
-
-            CreateSplinesTo(targetNodes);
-
-            int maxPieces = 10;
-            foreach (var n in targetNodes)
+            if (plateQueueManager != null)
             {
-                if (n != null && n.TotalPieces > maxPieces)
-                    maxPieces = n.TotalPieces;
+                while (!ct.IsCancellationRequested)
+                {
+                    while (!plateQueueManager.HasAvailablePlate && !ct.IsCancellationRequested)
+                        await UniTask.Yield(PlayerLoopTiming.Update, ct);
+
+                    if (ct.IsCancellationRequested || this == null)
+                        return;
+
+                    bool boarded = await plateQueueManager.TryBoardSpoolAsync(this, ct);
+                    if (boarded)
+                        break;
+
+                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
+                }
             }
-            float pieceDuration = m_ProjectSettings != null ? m_ProjectSettings.PieceConsumeDuration : 0.2f;
-            float consumptionDuration = Mathf.Max(0.3f, maxPieces * pieceDuration);
-            float targetPercent = ((m_FillCount + columns.Count) / (float)k_NodesPerSpool) * 100f;
-            UpdateFillUI(targetPercent, consumptionDuration);
 
-            var tasks = new List<UniTask<StitchNode>>();
-            foreach (int col in columns)
-                tasks.Add(m_FabricManager.ConsumeBottomNodeAsync(col));
-            await UniTask.WhenAll(tasks);
-
-            foreach (int col in columns)
-                m_FabricManager.NotifyUnravelEnded(col);
-
-            m_FillCount += columns.Count;
-
-            if (m_FillCount >= k_NodesPerSpool)
-            {
-                await PlayDisappearAndDestroy();
+            if (this == null || conveyorManager == null || ct.IsCancellationRequested)
                 return;
-            }
+
+            Thread thread = GetComponent<Thread>();
+            if (thread != null)
+                thread.ClearBusy();
+
+            conveyorManager.SendSpoolToConveyor(this, slot);
         }
         finally
         {
-            if (m_FillCount < k_NodesPerSpool)
-            {
-                Slot slotToRetry = m_CurrentUnravelSlot;
-                m_UnravelInProgress = false;
-                DestroySplines();
-                m_CurrentUnravelSlot = null;
-                if (slotToRetry != null)
-                    TryStartUnravel(slotToRetry, spoolColor, isRetry: true);
-            }
+            isAwaitingDeparture = false;
         }
     }
 
-    private SpoolFillUI GetFillUI()
+    public SplineFollower EnsureFollower()
     {
-        if (m_CachedFillUI != null) return m_CachedFillUI;
-        return m_SpoolFillUI != null ? m_SpoolFillUI : GetComponentInChildren<SpoolFillUI>(true);
+        if (cachedFollower == null)
+            cachedFollower = GetComponent<SplineFollower>();
+        if (cachedFollower == null)
+            cachedFollower = gameObject.AddComponent<SplineFollower>();
+        return cachedFollower;
     }
 
-    private void ShowFillUI(bool show)
+    public void SetTravelFollower(SplineFollower follower)
     {
-        var ui = m_SpoolFillUI != null ? m_SpoolFillUI : GetComponentInChildren<SpoolFillUI>(true);
-        if (ui != null)
+        cachedFollower = follower;
+    }
+
+    public void ClearTravelFollower()
+    {
+        cachedFollower = null;
+    }
+
+    public void InvalidateFollowerCache()
+    {
+        cachedFollower = null;
+    }
+
+    public void ReleaseOriginSlot()
+    {
+        isOnConveyor = true;
+    }
+
+    /// <summary>
+    /// Plate (veya fallback spool) follower baglandiktan sonra orbit + sarma.
+    /// </summary>
+    public async UniTaskVoid BeginConveyorTravel(ConveyorManager owner)
+    {
+        if (owner == null)
+            return;
+
+        travelCts?.Cancel();
+        travelCts = new CancellationTokenSource();
+        CancellationToken ct = travelCts.Token;
+
+        orbitCompleted = false;
+        isOrbitRoutine = true;
+        isOnConveyor = true;
+        conveyorEnterTime = Time.time;
+        nextFireTime = 0f;
+
+        EnsureWindLinePool();
+
+        SplineFollower follower = cachedFollower;
+        if (follower == null)
+            follower = EnsureFollower();
+
+        follower.onEndReached -= HandleOrbitEndReached;
+        follower.onEndReached += HandleOrbitEndReached;
+        follower.follow = true;
+
+        bool finishedCleanly = false;
+        try
         {
-            ui.gameObject.SetActive(show);
-            if (show) m_CachedFillUI = ui;
+            await TravelOrbitRoutine(ct);
+            finishedCleanly = !ct.IsCancellationRequested;
+        }
+        catch (System.OperationCanceledException)
+        {
+            finishedCleanly = false;
+        }
+        finally
+        {
+            isOrbitRoutine = false;
+            isOnConveyor = false;
+            if (follower != null)
+                follower.follow = false;
+            ReleaseAllWindLines();
+        }
+
+        if (!finishedCleanly || this == null || gameObject == null)
+            return;
+
+        bool completedFull = currentFill >= MaxCapacity ||
+                             (fabricManager != null && fabricManager.IsFabricCleared());
+        owner.HandleSpoolFinished(this, completedFull);
+    }
+
+    /// <summary>
+    /// Conveyor uzerinde continuous orbit: kapasite dolana veya renk bitene kadar sarar.
+    /// Follower durmaz; fireCooldown / laneCatchUp ile atis frekansi kontrol edilir.
+    /// </summary>
+    private async UniTask TravelOrbitRoutine(CancellationToken ct)
+    {
+        float radius = Mathf.Max(0.01f, searchRadius);
+        float cooldown = fireCooldown > 0f ? fireCooldown : 0.1f;
+        float catchUpCooldown = laneCatchUpCooldown > 0f ? laneCatchUpCooldown : 0.05f;
+        int capacity = MaxCapacity;
+        lastClaimedLane = int.MinValue;
+        lastApproachSide = int.MinValue;
+
+        while (!ct.IsCancellationRequested)
+        {
+            if (currentFill >= capacity)
+                break;
+
+            if (orbitCompleted && inProgressWinds <= 0)
+                break;
+
+            Vector3 spoolPos = transform.position;
+            int approachSide = fabricManager.ResolveApproachSideIndex(spoolPos);
+            if (approachSide != lastApproachSide)
+            {
+                lastApproachSide = approachSide;
+                lastClaimedLane = int.MinValue;
+            }
+
+            int preferredLane = fabricManager.ResolvePreferredLane(spoolPos);
+            bool canFire = !orbitCompleted &&
+                           (currentFill + inProgressWinds) < capacity &&
+                           Time.time >= nextFireTime;
+
+            if (canFire)
+            {
+                if (fabricManager.TryClaimClosestPixelOfColor(
+                        spoolPos,
+                        spoolPaletteId,
+                        radius,
+                        lastClaimedLane,
+                        out _,
+                        out Vector3 pixelWorldPos,
+                        out int claimedLane))
+                {
+                    lastClaimedLane = claimedLane;
+                    inProgressWinds++;
+                    bool catchingUp = claimedLane != preferredLane;
+                    nextFireTime = Time.time + (catchingUp ? catchUpCooldown : cooldown);
+                    UpdateFillUIPercent();
+                    WindPixelAsync(pixelWorldPos, ct).Forget();
+                }
+                else if (inProgressWinds <= 0 &&
+                         (Time.frameCount & 31) == 0 &&
+                         !fabricManager.HasRemainingPixelsOfPaletteId(spoolPaletteId))
+                {
+                    orbitCompleted = true;
+                }
+            }
+
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+        }
+
+        while (inProgressWinds > 0 && !ct.IsCancellationRequested)
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+    }
+
+    /// <summary>
+    /// Gorsel ip animasyonu (hareket eden spool -> sabit piksel).
+    /// Piksel zaten claim edilmis; bitiste sadece sayaclari gunceller.
+    /// </summary>
+    private async UniTask WindPixelAsync(Vector3 pixelWorldPos, CancellationToken ct)
+    {
+        int lineIndex = -1;
+        LineRenderer line = null;
+
+        try
+        {
+            lineIndex = AcquireWindLine();
+            if (lineIndex >= 0)
+                line = windLinePool[lineIndex];
+
+            float duration = Mathf.Max(0.01f, windDuration);
+            float elapsed = 0f;
+
+            while (elapsed < duration && !ct.IsCancellationRequested)
+            {
+                if (line != null)
+                {
+                    line.SetPosition(0, transform.position);
+                    line.SetPosition(1, pixelWorldPos);
+                }
+
+                elapsed += Time.deltaTime;
+                await UniTask.Yield(PlayerLoopTiming.Update, ct);
+            }
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            currentFill++;
+            if (currentFill > MaxCapacity)
+                currentFill = MaxCapacity;
+
+            UpdateFillUIPercent();
+        }
+        finally
+        {
+            if (inProgressWinds > 0)
+                inProgressWinds--;
+
+            if (lineIndex >= 0)
+                ReleaseWindLine(lineIndex);
         }
     }
 
-    private void UpdateFillUI(float targetPercent, float durationOverride = -1f)
+    /// <summary> Dreamteck: her tam tur (Loop wrap). </summary>
+    public void HandleOrbitEndReached(double _)
     {
-        var ui = GetFillUI();
-        if (ui != null)
-            ui.SetTargetPercent(targetPercent, durationOverride);
+        if (Time.time - conveyorEnterTime < minOrbitDuration)
+            return;
+
+        if (currentFill + inProgressWinds >= MaxCapacity)
+        {
+            orbitCompleted = true;
+            return;
+        }
+
+        // Renk kaldiysa donmeye devam; yoksa turu bitir.
+        if (fabricManager == null ||
+            !fabricManager.HasRemainingPixelsOfPaletteId(spoolPaletteId))
+        {
+            orbitCompleted = true;
+        }
     }
 
-    private async Cysharp.Threading.Tasks.UniTask PlayDisappearAndDestroy()
+    public void OnReturnedToSlot(Slot slot)
+    {
+        isOnConveyor = false;
+        TryReenterConveyorAsync(slot).Forget();
+    }
+
+    /// <summary>
+    /// Slot'a dondikten sonra eslesen piksel varsa tekrar conveyor'a girer.
+    /// </summary>
+    private async UniTaskVoid TryReenterConveyorAsync(Slot slot)
+    {
+        await UniTask.Yield(PlayerLoopTiming.Update);
+        if (this == null || slot == null || isOnConveyor || isOrbitRoutine || isAwaitingDeparture)
+            return;
+
+        if (currentFill >= MaxCapacity)
+            return;
+
+        if (fabricManager == null || !fabricManager.HasRemainingPixelsOfPaletteId(spoolPaletteId))
+            return;
+
+        TryStartUnravel(slot, generalColor);
+    }
+
+    public void NotifyReturnedWithoutSlot()
+    {
+        isOnConveyor = false;
+        ShowFillUI(false);
+    }
+
+    public async UniTask PlayCompleteAndDestroyAsync()
     {
         ShowFillUI(false);
-        DestroySplines();
+        ReleaseAllWindLines();
 
         Thread threadRef = GetComponent<Thread>();
-        Slot slotToFree = m_CurrentUnravelSlot;
-        SlotManager slotManagerRef = m_SlotManager;
+        SlotManager slotManagerRef = slotManager;
         GameObject go = gameObject;
 
-        float duration = Mathf.Max(0.01f, m_DisappearDuration);
+        float duration = Mathf.Max(0.01f, disappearDuration);
         Tween disappearTween = transform.DOScale(Vector3.zero, duration).SetEase(Ease.InBack);
         await disappearTween.AsyncWaitForCompletion().AsUniTask();
 
         if (slotManagerRef != null && threadRef != null)
             slotManagerRef.RemoveThread(threadRef);
-        if (slotToFree != null)
-            slotToFree.SetFull(false);
 
         if (go != null)
             Destroy(go);
     }
 
-    private void CreateSplinesTo(List<StitchNode> targetNodes)
+    private void UpdateFillUIPercent()
     {
-        DestroySplines();
-        if (targetNodes == null || targetNodes.Count == 0) return;
-
-        m_TargetNodes.Clear();
-        m_TargetNodes.AddRange(targetNodes);
-
-        m_SplinesRoot = new GameObject("UnravelSplines");
-        m_SplinesRoot.transform.SetParent(transform);
-
-        Vector3 spoolPos = transform.position;
-        for (int i = 0; i < targetNodes.Count; i++)
-        {
-            StitchNode target = targetNodes[i];
-            if (target == null) continue;
-
-            Vector3 endPos = target.transform.position;
-            Vector3 mid = (spoolPos + endPos) * 0.5f;
-            Vector3 dir = (endPos - spoolPos).normalized;
-            Vector3 perp = Vector3.Cross(dir, Vector3.up).normalized;
-            if (perp.sqrMagnitude < 0.01f) perp = Vector3.Cross(dir, Vector3.forward).normalized;
-            mid += perp * 0.2f;
-
-            GameObject go = new GameObject("ThreadSpline_" + i);
-            go.transform.SetParent(m_SplinesRoot.transform);
-
-            var splineComputer = go.AddComponent<SplineComputer>();
-            splineComputer.space = SplineComputer.Space.World;
-            splineComputer.type = Spline.Type.BSpline;
-            var points = new SplinePoint[3];
-            points[0] = new SplinePoint(spoolPos);
-            points[1] = new SplinePoint(mid);
-            points[2] = new SplinePoint(endPos);
-            splineComputer.SetPoints(points);
-
-            var tube = go.AddComponent<TubeGenerator>();
-            tube.spline = splineComputer;
-            tube.size = 0.055f;
-            var meshRenderer = go.GetComponent<MeshRenderer>();
-            if (meshRenderer != null && m_ThreadMaterial != null)
-                meshRenderer.sharedMaterial = m_ThreadMaterial;
-
-            m_SplineComputers.Add(splineComputer);
-            m_BaseMidPoints.Add(mid);
-            m_InitialEndPositions.Add(endPos);
-        }
-        m_WindingStartTime = Time.time;
+        // UI: commit + rezervasyon (oyuncu 10/10'a ne kadar yakin oldugunu gorsun).
+        float committed = currentFill + inProgressWinds;
+        float percent = (committed / (float)MaxCapacity) * 100f;
+        SpoolFillUI ui = GetFillUI();
+        if (ui != null)
+            ui.SetTargetPercent(percent, fireCooldown);
     }
 
-    private void LateUpdate()
+    private SpoolFillUI GetFillUI()
     {
-        if (m_SplineComputers.Count == 0 || m_WindingStartTime < 0f) return;
+        if (cachedFillUI != null)
+            return cachedFillUI;
+        cachedFillUI = spoolFillUI != null ? spoolFillUI : GetComponentInChildren<SpoolFillUI>(true);
+        return cachedFillUI;
+    }
 
-        Vector3 spoolPos = transform.position;
-        float pieceDuration = m_ProjectSettings != null ? m_ProjectSettings.PieceConsumeDuration : 0.2f;
-        float wave = Mathf.Sin(Time.time * m_WaveSpeed) * m_WaveAmplitude;
+    private void ShowFillUI(bool show)
+    {
+        SpoolFillUI ui = GetFillUI();
+        if (ui != null)
+            ui.gameObject.SetActive(show);
+    }
 
-        for (int i = 0; i < m_SplineComputers.Count; i++)
+    private void EnsureWindLinePool()
+    {
+        int size = MaxCapacity;
+        if (size < 1)
+            size = 10;
+
+        if (windLinePool != null && windLinePool.Length >= size)
+            return;
+
+        if (runtimeLineMaterial == null)
         {
-            var comp = m_SplineComputers[i];
-            if (comp == null) continue;
-            if (i >= m_InitialEndPositions.Count) continue;
+            if (threadMaterial != null)
+                runtimeLineMaterial = threadMaterial;
+            else
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                    runtimeLineMaterial = new Material(shader);
+            }
+        }
 
-            SplinePoint[] points = comp.GetPoints(SplineComputer.Space.World);
-            if (points == null || points.Length < 3) continue;
+        windLinePool = new LineRenderer[size];
+        windLineInUse = new bool[size];
 
-            Vector3 start = spoolPos;
-            Vector3 end = (i < m_TargetNodes.Count && m_TargetNodes[i] != null)
-                ? m_TargetNodes[i].GetCurrentPiecePosition()
-                : m_InitialEndPositions[i];
-            Vector3 dir = (end - start).normalized;
-            Vector3 perp = Vector3.Cross(dir, Vector3.up).normalized;
-            if (perp.sqrMagnitude < 0.01f) perp = Vector3.Cross(dir, Vector3.forward).normalized;
+        for (int i = 0; i < size; i++)
+        {
+            GameObject lineGo = new GameObject("WindThreadLine_" + i);
+            lineGo.transform.SetParent(transform, false);
+            LineRenderer line = lineGo.AddComponent<LineRenderer>();
+            line.positionCount = 2;
+            line.startWidth = threadWidth;
+            line.endWidth = threadWidth * 0.7f;
+            line.useWorldSpace = true;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.numCapVertices = 2;
+            if (runtimeLineMaterial != null)
+                line.sharedMaterial = runtimeLineMaterial;
 
-            float dist = Vector3.Distance(start, end);
-            float waveAtMid = Mathf.Sin(Time.time * m_WaveSpeed) * m_WaveAmplitude;
-            float waveAtSpool = Mathf.Sin(Time.time * m_WaveSpeed - dist * 2f) * m_WaveAmplitude * 0.5f;
-
-            Vector3 mid = (start + end) * 0.5f + perp * (0.15f + waveAtMid);
-            points[0].position = start + perp * waveAtSpool;
-            points[1].position = mid;
-            points[2].position = end;
-            comp.SetPoints(points);
+            Color c = spoolColor;
+            line.startColor = c;
+            line.endColor = c;
+            line.enabled = false;
+            windLinePool[i] = line;
+            windLineInUse[i] = false;
         }
     }
 
-    private void DestroySplines()
+    private int AcquireWindLine()
     {
-        m_SplineComputers.Clear();
-        m_BaseMidPoints.Clear();
-        m_InitialEndPositions.Clear();
-        m_TargetNodes.Clear();
-        m_WindingStartTime = -1f;
-        if (m_SplinesRoot != null)
+        if (windLinePool == null)
+            return -1;
+
+        for (int i = 0; i < windLinePool.Length; i++)
         {
-            Destroy(m_SplinesRoot);
-            m_SplinesRoot = null;
+            if (windLineInUse[i])
+                continue;
+
+            windLineInUse[i] = true;
+            LineRenderer line = windLinePool[i];
+            line.enabled = true;
+            Color c = spoolColor;
+            line.startColor = c;
+            line.endColor = c;
+            return i;
         }
+
+        return -1;
+    }
+
+    private void ReleaseWindLine(int index)
+    {
+        if (windLinePool == null || index < 0 || index >= windLinePool.Length)
+            return;
+
+        windLineInUse[index] = false;
+        LineRenderer line = windLinePool[index];
+        if (line != null)
+            line.enabled = false;
+    }
+
+    private void ReleaseAllWindLines()
+    {
+        if (windLinePool == null)
+            return;
+
+        for (int i = 0; i < windLinePool.Length; i++)
+            ReleaseWindLine(i);
     }
 
     private void OnDestroy()
     {
-        m_WindingCts?.Cancel();
-        DestroySplines();
+        travelCts?.Cancel();
+        if (cachedFollower != null)
+            cachedFollower.onEndReached -= HandleOrbitEndReached;
+        ReleaseAllWindLines();
     }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        DrawSearchRadiusGizmo(selected: false);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        DrawSearchRadiusGizmo(selected: true);
+    }
+
+    /// <summary>
+    /// Arama XZ duzleminde; wire sphere + XZ daire.
+    /// </summary>
+    private void DrawSearchRadiusGizmo(bool selected)
+    {
+        float radius = Mathf.Max(0.01f, searchRadius);
+        Vector3 center = transform.position;
+
+        Color sphereColor = selected
+            ? new Color(1f, 0.25f, 0.1f, 0.95f)
+            : new Color(1f, 0.45f, 0.15f, 0.55f);
+        Gizmos.color = sphereColor;
+        Gizmos.DrawWireSphere(center, radius);
+
+        Gizmos.color = selected
+            ? new Color(1f, 0.85f, 0.15f, 1f)
+            : new Color(1f, 0.75f, 0.2f, 0.7f);
+        DrawGizmoCircleXZ(center, radius, 48);
+    }
+
+    private void DrawGizmoCircleXZ(Vector3 center, float radius, int segments)
+    {
+        if (segments < 8)
+            segments = 8;
+
+        float step = (Mathf.PI * 2f) / segments;
+        Vector3 prev = new Vector3(center.x + radius, center.y, center.z);
+
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = i * step;
+            Vector3 next = new Vector3(
+                center.x + Mathf.Cos(angle) * radius,
+                center.y,
+                center.z + Mathf.Sin(angle) * radius);
+            Gizmos.DrawLine(prev, next);
+            prev = next;
+        }
+    }
+#endif
 }
+

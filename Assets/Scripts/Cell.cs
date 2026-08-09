@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -17,15 +15,15 @@ public class Cell : MonoBehaviour
     private bool m_IsFull;
     public bool IsFull => m_IsFull;
 
-    private Transform m_transform;
+    private Transform cachedTransform;
 
     public void Construct(Vector3 localPosition, Vector2Int coordinate, Transform parent, bool isLocked)
     {
         SetLocked(isLocked);
         m_Coordinate = coordinate;
-        m_transform = transform;
-        m_transform.SetParent(parent);
-        m_transform.localPosition = localPosition;
+        cachedTransform = transform;
+        cachedTransform.SetParent(parent);
+        cachedTransform.localPosition = localPosition;
     }
 
     private void SetLocked(bool isLocked)
@@ -40,7 +38,7 @@ public class Cell : MonoBehaviour
     {
         m_IsFull = isFull;
     }
-    
+
     public class Factory : PlaceholderFactory<Cell>
     {
     }

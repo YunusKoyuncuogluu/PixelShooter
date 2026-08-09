@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using Zenject;
 
 public class ProjectInstaller : MonoInstaller<ProjectInstaller>
@@ -13,7 +10,9 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
 
     private void InstallSettings()
     {
-        Container.Bind<ProjectSettings>().FromInstance(ProjectSettings.Load()).AsSingle();
+        Container.Bind<ProjectSettings>()
+            .FromScriptableObjectResource(ProjectSettings.ResourcePath)
+            .AsSingle();
     }
 
     private void InstallManagers()

@@ -52,6 +52,9 @@ MonoBehaviour:
   m_QuestionMaterial: {fileID: 2100000, guid: b113fe85ed7fbb04bbd089569d3afe5a, type: 2}
   m_QuestionDarkMaterial: {fileID: 2100000, guid: 6cf20a4af21393840bee91a6a0d7198b, type: 2}
   m_QuestionMark: {fileID: 7873761482736223079}
+  slotTravelSpeed: 25
+  plateTravelSpeed: 25
+  conveyorSpeed: 5
 --- !u!114 &7569707946790346603
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64,12 +67,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04c829da658c5804790e84e06821d6f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ThreadMaterial: {fileID: 2100000, guid: d2b89dae86aac9a4d9b52881cf3be975, type: 2}
-  m_WindingVisibleDuration: 1.4
-  m_WaveSpeed: 3.54
-  m_WaveAmplitude: 0.804
-  m_SpoolFillUI: {fileID: 4984321533816226820}
-  m_DisappearDuration: 0.35
+  maxCapacity: 10
+  searchRadius: 30
+  fireCooldown: 0.55
+  windDuration: 0.7
+  minOrbitDuration: 1.8
+  laneCatchUpCooldown: 0.08
+  threadMaterial: {fileID: 0}
+  threadWidth: 0.05
+  spoolFillUI: {fileID: 0}
+  disappearDuration: 0.35
 --- !u!1 &1058523939324127312
 GameObject:
   m_ObjectHideFlags: 0
@@ -173,20 +180,23 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 1
+  m_TextWrappingMode: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
+  m_ActiveFontFeatures: 00000000
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
+  m_EmojiFallbackSupport: 1
   m_parseCtrlCharacters: 1
   m_isOrthographic: 1
   m_isCullingEnabled: 0
@@ -414,6 +424,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
+  m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
@@ -530,6 +541,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -551,9 +567,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &373423648082774544
 MonoBehaviour:
@@ -613,20 +631,23 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 1
+  m_TextWrappingMode: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
+  m_ActiveFontFeatures: 00000000
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
+  m_EmojiFallbackSupport: 1
   m_parseCtrlCharacters: 1
   m_isOrthographic: 0
   m_isCullingEnabled: 0

@@ -4,7 +4,6 @@ namespace LevelManagement
     {
         int MoveCount { get; }
         int Stars { get; }
-
         float Time { get; }
 
         bool IsUnlocked { get; }

@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -6,15 +5,15 @@ using UnityEngine;
 [CreateAssetMenu(fileName = nameof(ProjectSettings), menuName = "RopeWrap" + "/" + nameof(ProjectSettings), order = 0)]
 public class ProjectSettings : ScriptableObject
 {
-    private static ProjectSettings s_Instance;
-    private const string Path = "Settings/" + nameof(ProjectSettings);
+    public const string ResourcePath = "Settings/" + nameof(ProjectSettings);
 
+    /// <summary>
+    /// Editor / serialization context icin. Runtime DI uzerinden inject tercih edilir.
+    /// Unity Resources cache kullanir; ekstra static instance tutulmaz.
+    /// </summary>
     public static ProjectSettings Load()
     {
-        if (s_Instance == null)
-            s_Instance = Resources.Load<ProjectSettings>(Path);
-
-        return s_Instance;
+        return Resources.Load<ProjectSettings>(ResourcePath);
     }
 
     #region Facade Settings
@@ -24,7 +23,6 @@ public class ProjectSettings : ScriptableObject
 
     [SerializeField, FoldoutGroup("Facade Settings")]
     private List<FacadeProperty> m_OriginalFacadeProperties;
-
 
     public List<FacadeProperty> GetFacadeProperties()
     {
@@ -39,81 +37,18 @@ public class ProjectSettings : ScriptableObject
     private List<FacadeProperty> CloneFacadeProperties(List<FacadeProperty> facadeProperties)
     {
         List<FacadeProperty> clonedList = new List<FacadeProperty>();
+        if (facadeProperties == null)
+            return clonedList;
 
-        foreach (var vProperty in facadeProperties)
+        for (int i = 0; i < facadeProperties.Count; i++)
         {
-            clonedList.Add((FacadeProperty)vProperty.Clone());
+            FacadeProperty property = facadeProperties[i];
+            if (property != null)
+                clonedList.Add((FacadeProperty)property.Clone());
         }
 
         return clonedList;
     }
-
-    #endregion
-
-    #region GameSettings
-
-    [SerializeField] [FoldoutGroup("Cell Settings")]
-    private float m_CellSpaceX;
-
-    public float CellSpaceX => m_CellSpaceX;
-
-    [SerializeField] [FoldoutGroup("Cell Settings")]
-    private float m_CellSpaceY;
-
-    public float CellSpaceY => m_CellSpaceY;
-
-    #region Stitch Settings
-
-    [Tooltip("Stitchler arası ek yatay boşluk (referans scale üzerine eklenir).")]
-    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0f)]
-    private float m_StitchOffsetX;
-
-    public float StitchOffsetX => m_StitchOffsetX;
-
-    [Tooltip("Stitchler arası ek dikey boşluk (referans scale üzerine eklenir).")]
-    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0f)]
-    private float m_StitchOffsetY;
-
-    public float StitchOffsetY => m_StitchOffsetY;
-
-    [Tooltip("StitchNode sütunu bir sıra aşağı kayarken animasyon süresi (saniye). Resources/ProjectSettings asset'inden değiştirebilirsin.")]
-    [SerializeField] [FoldoutGroup("Stitch Settings")]
-    private float m_StitchShiftDownDuration = 0.25f;
-
-    public float StitchShiftDownDuration => m_StitchShiftDownDuration;
-
-    [Tooltip("Bir makaranın dolması için tüketilmesi gereken stitch node sayısı (örn. 3 = %33, %66, %100).")]
-    [SerializeField] [FoldoutGroup("Stitch Settings")]
-    private int m_StitchNodesPerSpool = 3;
-
-    /// <summary> Bir makara en az 3 stitch ile dolar. 0/1/2 atanırsa 3 kullanılır. </summary>
-    public int StitchNodesPerSpool => m_StitchNodesPerSpool >= 3 ? m_StitchNodesPerSpool : 3;
-
-    [Tooltip("Bir parçanın tüketilme süresi (saniye). Parça sayısı StitchNode prefab'ındaki Pieces listesinden gelir.")]
-    [SerializeField] [FoldoutGroup("Stitch Settings")] [Min(0.05f)]
-    private float m_PieceConsumeDuration = 0.2f;
-
-    public float PieceConsumeDuration => Mathf.Max(0.05f, m_PieceConsumeDuration);
-
-    #endregion
-
-    public float ThreadSpeed
-    {
-        get => m_ThreadSpeed;
-        set => m_ThreadSpeed = value;
-    }
-
-    public float ThreadRotateSpeed
-    {
-        get => m_ThreadRotateSpeed;
-        set => m_ThreadRotateSpeed = value;
-    }
-
-    [SerializeField] [FoldoutGroup("Thread Settings")]
-    private float m_ThreadSpeed;
-
-    [SerializeField] [FoldoutGroup("Cell Settings")]
-    private float m_ThreadRotateSpeed;
 
     #endregion
 }

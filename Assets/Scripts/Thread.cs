@@ -1,13 +1,12 @@
-using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
-using Dreamteck.Splines;
 using UnityEngine;
 using Zenject;
-using Vector3 = UnityEngine.Vector3;
 
 public class Thread : MonoBehaviour
 {
+    private readonly Vector3 slotEuler = new Vector3(90f, 0f, 90f);
+
     [Inject] private ProjectSettings m_ProjectSettings;
     [Inject] private ThreadManager m_ThreadManager;
     [Inject] private SlotManager m_SlotManager;
@@ -17,6 +16,18 @@ public class Thread : MonoBehaviour
     [SerializeField] private Material m_QuestionMaterial;
     [SerializeField] private Material m_QuestionDarkMaterial;
     [SerializeField] private GameObject m_QuestionMark;
+
+    [Header("Motion Speeds")]
+    [Tooltip("Grid -> slot FollowTo hizi.")]
+    [SerializeField] private float slotTravelSpeed = 25f;
+    [Tooltip("Slot/grid -> plate seat FollowTo hizi.")]
+    [SerializeField] private float plateTravelSpeed = 20f;
+    [Tooltip("Conveyor uzerinde ilerleme hizi.")]
+    [SerializeField] private float conveyorSpeed = 5f;
+
+    public float SlotTravelSpeed => Mathf.Max(0.01f, slotTravelSpeed);
+    public float PlateTravelSpeed => Mathf.Max(0.01f, plateTravelSpeed);
+    public float ConveyorSpeed => Mathf.Max(0.01f, conveyorSpeed);
 
     private bool m_IsClickable;
     public bool IsClickable => m_IsClickable;
@@ -40,20 +51,18 @@ public class Thread : MonoBehaviour
     private Material[] m_Materials;
     private Material[] m_QuestionMaterials;
     private Transform m_Transform;
-    private List<Vector3> m_Path;
-    private float m_Speed;
-    private float m_RotateSpeed;
 
     private int m_ColorLevel;
     public int ColorLevel => m_ColorLevel;
 
-    private Sequence m_scaleSequence;
+    private Sequence scaleSequence;
+    private bool m_IsBusy;
 
+    /// <summary> Slot / plate animasyonunda veya kuyrukta. </summary>
+    public bool IsBusy => m_IsBusy;
 
     public void Construct(ThreadData threadData)
     {
-        m_Speed = m_ProjectSettings.ThreadSpeed;
-        m_RotateSpeed = m_ProjectSettings.ThreadRotateSpeed;
         m_Transform = transform;
         m_ThreadData = threadData;
         m_Transform.position = m_ThreadData.Position;
@@ -62,6 +71,7 @@ public class Thread : MonoBehaviour
         m_ColorLevel = (int)m_Color - 1;
         m_IsQuestionThread = threadData.IsQuestionThread;
         m_QuestionMark.SetActive(m_IsQuestionThread);
+        m_IsBusy = false;
         SetStartColor();
     }
 
@@ -92,13 +102,11 @@ public class Thread : MonoBehaviour
 
     public void SetOutline(bool open) => m_Materials[0].SetFloat("_OutlineWidth", open ? 1f : 0f);
 
-    public void ClickableProcess(List<Vector3> path)
+    public void ClickableProcess()
     {
         SetOutline(IsClickable);
         if (!m_IsClickable)
-        {
             return;
-        }
 
         if (m_IsQuestionThread)
         {
@@ -106,47 +114,91 @@ public class Thread : MonoBehaviour
             m_QuestionMark.gameObject.SetActive(m_IsQuestionThread);
             SetMaterial(false);
         }
-
-        m_Path = new List<Vector3>(path);
     }
 
     public void OnClick()
     {
+        if (m_IsBusy || !m_IsClickable)
+            return;
+
         m_IsClickable = false;
+        m_IsBusy = true;
         m_ThreadManager.RemoveThread(m_Coordinate);
         m_SlotManager.SaveThread(this);
+    }
+
+    /// <summary>
+    /// Plate hazirsa dogrudan boarding; degilse slot animasyonu.
+    /// </summary>
+    public void DepartFromSlot(Slot slot)
+    {
+        m_MySlot = slot;
+        m_IsBusy = true;
+
+        SpoolController spoolController = GetComponent<SpoolController>();
+        if (spoolController != null && spoolController.TryBeginDeparture(slot, m_Color))
+        {
+            m_TunnelManager.ControlTunnel();
+            return;
+        }
+
+        PlacementSlotAnimation(slot);
     }
 
     public void PlacementSlotAnimation(Slot slot)
     {
         m_MySlot = slot;
+        m_IsBusy = true;
 
-        transform.gameObject.FollowTo(m_MySlot.transform, m_Speed,
+        SplineExtensions.ClearExistingFollowers(gameObject);
+
+        Vector3 slotPos = m_MySlot.transform.position;
+
+        transform.gameObject.FollowTo(
+            m_MySlot.transform,
+            SlotTravelSpeed,
             onComplete: () =>
             {
-                Debug.Log("Spline End");
-                m_scaleSequence?.Kill();
-                m_scaleSequence = DOTween.Sequence();
-                m_scaleSequence.Append(m_Transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
-                m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
-                m_scaleSequence.Append(m_Transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
-                m_scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
-                m_scaleSequence.OnComplete(() =>
+                // Tam slot pozisyonu + eski yan oturus.
+                m_Transform.position = slotPos;
+                m_Transform.eulerAngles = slotEuler;
+
+                scaleSequence?.Kill();
+                scaleSequence = DOTween.Sequence();
+                scaleSequence.Append(m_Transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
+                scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one * 0.95f, 0.05f)).SetEase(Ease.Linear);
+                scaleSequence.Append(m_Transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
+                scaleSequence.Append(m_MySlot.transform.DOScale(Vector3.one, 0.05f)).SetEase(Ease.Linear);
+                scaleSequence.OnComplete(() =>
                 {
                     m_TunnelManager.ControlTunnel();
-                    var spoolController = GetComponent<SpoolController>();
-                    if (spoolController == null)
-                    {
-                        Debug.LogWarning($"[Thread] SpoolController component not found on Thread GameObject '{gameObject.name}'. Please add SpoolController component to Thread prefab.");
-                    }
-                    else
-                    {
+                    SpoolController spoolController = GetComponent<SpoolController>();
+                    if (spoolController != null)
                         spoolController.TryStartUnravel(m_MySlot, m_Color);
-                    }
                 });
             },
-            onUpdate:
-            (progress) => { transform.eulerAngles = Vector3.Lerp(Vector3.zero, new Vector3(90f, 0f, 90f), progress); });
+            onUpdate: progress =>
+            {
+                transform.eulerAngles = Vector3.Lerp(Vector3.zero, slotEuler, progress);
+            });
+    }
+
+    public void BindToSlotImmediate(Slot slot)
+    {
+        m_MySlot = slot;
+        m_IsBusy = false;
+        SplineExtensions.ClearExistingFollowers(gameObject);
+
+        if (slot != null)
+        {
+            m_Transform.position = slot.transform.position;
+            m_Transform.eulerAngles = slotEuler;
+        }
+    }
+
+    public void ClearBusy()
+    {
+        m_IsBusy = false;
     }
 
     public class Factory : PlaceholderFactory<Thread>

@@ -4,8 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Makaranın altında doluluk gösterir: Slider + % metni. Hedef yüzde lerp ile yumuşak güncellenir.
-/// Her kare kameraya döner (billboard). Başlangıçta kapalı olmalı; slota gelme animasyonu bitince açılır.
+/// Makaranin altinda doluluk gosterir: Slider + % metni. Hedef yuzde lerp ile yumusak guncellenir.
+/// Her kare kameraya doner (billboard). Baslangicta kapali olmali; slota gelme animasyonu bitince acilir.
 /// </summary>
 public class SpoolFillUI : MonoBehaviour
 {
@@ -45,12 +45,12 @@ public class SpoolFillUI : MonoBehaviour
             return;
         if (m_Camera == null)
             m_Camera = Camera.main;
-        if (m_Camera != null && transform != null)
+        if (m_Camera != null)
             transform.rotation = Quaternion.LookRotation(transform.position - m_Camera.transform.position);
     }
 
     /// <summary>
-    /// Hedef doluluk yüzdesini ayarlar (0–100). durationOverride > 0 ise lerp süresi onu kullanır (sarma ile eşzamanlı UI için).
+    /// Hedef doluluk yuzdesini ayarlar (0-100). durationOverride > 0 ise lerp suresi onu kullanir.
     /// </summary>
     public void SetTargetPercent(float targetPercent, float durationOverride = -1f)
     {
@@ -70,10 +70,10 @@ public class SpoolFillUI : MonoBehaviour
             .SetEase(Ease.Linear);
     }
 
-    private void SetPercentText(string s)
+    private void SetPercentText(string text)
     {
         if (m_PercentText != null)
-            m_PercentText.text = s;
+            m_PercentText.text = text;
     }
 
     private void ApplyDisplay()
