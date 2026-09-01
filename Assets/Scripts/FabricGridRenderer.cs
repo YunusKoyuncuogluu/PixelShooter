@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using LevelManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Zenject;
 
 /// <summary>
@@ -220,7 +221,9 @@ public class FabricGridRenderer : MonoBehaviour, IInitializable, ITickable
                 instanceMaterial,
                 batch.matrices,
                 batch.count,
-                batch.propertyBlock);
+                batch.propertyBlock,
+                ShadowCastingMode.Off,
+                false);
         }
     }
 

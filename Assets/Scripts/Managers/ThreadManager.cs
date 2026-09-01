@@ -47,10 +47,8 @@ public class ThreadManager : MonoBehaviour
         m_CellPositioner = new CellPositioner(
             m_Width,
             m_Height,
-            m_CellManager.CenterTransform,
             m_CellManager.CellSpaceX,
-            m_CellManager.CellSpaceY,
-            m_CellManager.GridTopAnchorZ);
+            m_CellManager.CellSpaceY);
         m_PositionList = new List<Vector3>(m_CellPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_CellPositioner.CoordinateList());
         m_Threads = new Thread[m_Width, m_Height];
@@ -70,7 +68,7 @@ public class ThreadManager : MonoBehaviour
                 : (GeneralColor)cellData.ColorLevel;
 
             ThreadData threadData =
-                new ThreadData(color, cellData.IsQuestionThread, m_CoordinateList[i], m_PositionList[i]);
+                new ThreadData(color, cellData.IsQuestionThread, m_CoordinateList[i], ToWorld(m_PositionList[i]));
 
             CreateThread(threadData);
 
@@ -89,6 +87,11 @@ public class ThreadManager : MonoBehaviour
         m_CellManager.SetFull(threadCoordinate, true);
     }
 
+    private Vector3 ToWorld(Vector3 localPosition)
+    {
+        return m_CellManager.CenterTransform.TransformPoint(localPosition);
+    }
+
     private async UniTaskVoid RefreshClickableThreadsNextFrame()
     {
         await UniTask.DelayFrame(1, cancellationToken: this.GetCancellationTokenOnDestroy());
@@ -97,8 +100,8 @@ public class ThreadManager : MonoBehaviour
 
     public Thread CreateTunnelThread(GeneralColor color, Vector2Int coordinate)
     {
-        Vector3 threadPosition = m_PositionList[m_CoordinateList.IndexOf(coordinate)];
-        
+        Vector3 threadPosition = ToWorld(m_PositionList[m_CoordinateList.IndexOf(coordinate)]);
+
         ThreadData threadData = new ThreadData(color, false, coordinate, threadPosition);
         return CreateThreadForTunnel(threadData);
     }

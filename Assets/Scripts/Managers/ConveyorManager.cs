@@ -147,18 +147,34 @@ public class ConveyorManager : MonoBehaviour
         follower.wrapMode = SplineFollower.Wrap.Loop;
         follower.motion.applyPosition = true;
         follower.motion.applyRotation = true;
-        follower.motion.offset = Vector3.zero;
 
         Vector3 flatEuler = plate.FlatEuler;
         follower.motion.rotationOffset = flatEuler;
 
-        // Boarding conveyor ilk point'te bitti; percent 0'dan basla.
-        follower.SetPercent(0.0);
+        // BoardingAnchor (veya spline 0) ile spline ornegi arasindaki ofset:
+        // plate yolculuk boyunca ayni yukseklikte kalir, spline'a zip'lenmez.
         SplineSample startSample = conveyorSpline.Evaluate(0.0);
-        Vector3 forward = Flatten(startSample.forward);
-        plate.transform.SetPositionAndRotation(
-            startSample.position,
-            Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(flatEuler));
+        Vector3 followPosition = startSample.position;
+        Quaternion followRotation = Quaternion.LookRotation(Flatten(startSample.forward), Vector3.up)
+            * Quaternion.Euler(flatEuler);
+        Vector2 followOffset = Vector2.zero;
+
+        if (plateQueueManager != null)
+        {
+            plateQueueManager.GetConveyorStartPose(plate, out Vector3 boardPos, out Quaternion boardRot);
+            Vector3 delta = boardPos - startSample.position;
+            followOffset = new Vector2(
+                Vector3.Dot(delta, startSample.right),
+                Vector3.Dot(delta, startSample.up));
+            followPosition = startSample.position
+                + startSample.right * followOffset.x
+                + startSample.up * followOffset.y;
+            followRotation = boardRot;
+        }
+
+        follower.motion.offset = followOffset;
+        follower.SetPercent(0.0);
+        plate.transform.SetPositionAndRotation(followPosition, followRotation);
 
         spool.SetTravelFollower(follower);
         follower.follow = true;

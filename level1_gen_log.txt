@@ -1,0 +1,23 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.4/staging' branch; Version is '6000.4.5f1 (cc83ebd631f8) revision 13403115'; Using compiler version '194234433'; Build Type 'Release'
+OS: 'Windows 10  (10.0.19045) 64bit Professional' Language: 'tr' Physical Memory: 16086 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Yunus" at "2026-08-09T20:18:09.4538193Z"
+System  architecture: x64
+Process architecture: x64
+Date: 2026-08-09T20:18:09Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.4.5f1\Editor\Unity.exe
+-batchmode
+-nographics
+-quit
+-projectPath
+c:\Users\Yunus\Documents\GitHub\RopeWrap
+-executeMethod
+RopeWrap.Editor.LevelGeneratorWindow.GenerateLevel1Batch
+-logFile
+c:\Users\Yunus\Documents\GitHub\RopeWrap\level1_gen_log.txt
+Successfully changed project path to: c:\Users\Yunus\Documents\GitHub\RopeWrap
+C:/Users/Yunus/Documents/GitHub/RopeWrap
+Exiting without the bug reporter. Application will terminate with return code 1

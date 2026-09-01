@@ -5,30 +5,26 @@ public class CellPositioner
 {
     private readonly int m_Width;
     private readonly int m_Height;
-    private readonly Transform m_CenterTransform;
     private readonly float m_SpaceX;
     private readonly float m_SpaceY;
-    private readonly float m_TopAnchorZ;
 
     public CellPositioner(
         int width,
         int height,
-        Transform centerTransform,
         float spaceX,
-        float spaceY,
-        float topAnchorZ)
+        float spaceY)
     {
         m_Width = width;
         m_Height = height;
-        m_CenterTransform = centerTransform;
         m_SpaceX = spaceX;
         m_SpaceY = spaceY;
-        m_TopAnchorZ = topAnchorZ;
     }
 
     /// <summary>
+    /// Parent local space.
+    /// X: parent orijini etrafinda simetrik.
+    /// Z: local Z=0 ust kenar (sabit baslama siniri). Grid -Z yonunde buyur.
     /// Veri: y=0 alt (duvar), y=Height-1 ust (acik/cikis).
-    /// X: center etrafinda simetrik. Z: grid ust kenari topAnchorZ'ye sabit (conveyor alti).
     /// </summary>
     public List<Vector3> PositionList()
     {
@@ -41,8 +37,8 @@ public class CellPositioner
             for (int x = 0; x < m_Width; x++)
             {
                 float localX = (x + m_SpaceX * x) - extentX + 0.5f;
-                float localZ = (m_TopAnchorZ - 0.5f) - (m_Height - 1 - y) * stepZ;
-                cellPositionList.Add(m_CenterTransform.TransformPoint(new Vector3(localX, 0f, localZ)));
+                float localZ = -0.5f - (m_Height - 1 - y) * stepZ;
+                cellPositionList.Add(new Vector3(localX, 0f, localZ));
             }
         }
 

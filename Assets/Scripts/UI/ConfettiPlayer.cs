@@ -4,9 +4,6 @@ using UnityEngine;
 
 namespace RopeWrap.UI
 {
-    /// <summary>
-    /// Win aninda konfeti oynatir. Inspector'da ParticleSystem atanabilir; yoksa kisa bekleme yapar.
-    /// </summary>
     public class ConfettiPlayer : MonoBehaviour
     {
         [SerializeField] private ParticleSystem m_ConfettiParticles;

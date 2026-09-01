@@ -10,9 +10,6 @@ public class TunnelManager : MonoBehaviour
     [Inject] private CellManager m_CellManager;
     [Inject] private ThreadManager m_ThreadManager;
 
-    [SerializeField] private Transform m_CenterTransform;
-    public Transform CenterTransform => m_CenterTransform;
-
     private Tunnel[,] m_Tunnels;
     public Tunnel[,] Tunnels => m_Tunnels;
 
@@ -39,10 +36,8 @@ public class TunnelManager : MonoBehaviour
         m_CellPositioner = new CellPositioner(
             m_Width,
             m_Height,
-            m_CenterTransform,
             m_CellManager.CellSpaceX,
-            m_CellManager.CellSpaceY,
-            m_CellManager.GridTopAnchorZ);
+            m_CellManager.CellSpaceY);
         m_PositionList = new List<Vector3>(m_CellPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_CellPositioner.CoordinateList());
         CreateTunnel(m_Width, m_Height);
@@ -56,7 +51,7 @@ public class TunnelManager : MonoBehaviour
         {
             int ay = LevelData.GameYToArrayRow(m_CoordinateList[i].y, m_Height);
             CellData cellData = m_CellData[m_CoordinateList[i].x, ay];
-            Vector3 tunnelPosition = m_PositionList[i];
+            Vector3 tunnelPosition = m_CellManager.CenterTransform.TransformPoint(m_PositionList[i]);
             Vector2Int tunnelCoordinate = m_CoordinateList[i];
 
             if (!cellData.IsTunnel)

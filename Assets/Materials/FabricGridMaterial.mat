@@ -35,8 +35,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _BumpScale: 1
-    - _RampSmoothing: 1
-    - _RampThreshold: 0.575
+    - _RampSmoothing: 0.199
+    - _RampThreshold: 0.863
     - _ReceiveShadowsOff: 0
     - _Smoothing: 0.98
     - _Threshold: 1
@@ -44,9 +44,9 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0.78113204, g: 0.23433954, b: 0.23433954, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _HColor: {r: 1, g: 1, b: 1, a: 1}
+    - _HColor: {r: 0.554717, g: 0.554717, b: 0.554717, a: 1}
     - _HighlightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _SColor: {r: 0.5396226, g: 0.5396226, b: 0.5396226, a: 1}
+    - _SColor: {r: 0, g: 0, b: 0, a: 1}
     - _ShadowColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

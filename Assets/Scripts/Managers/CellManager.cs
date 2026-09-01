@@ -8,15 +8,13 @@ public class CellManager : MonoBehaviour
 {
     [Inject] Cell.Factory m_CellFactory;
 
+    [Header("Grid Parent")]
+    [Tooltip("CellParent. X ortalanir. Local Z=0 grid ust kenaridir; farkli height'larda ust sabit kalir, grid asagi buyur.")]
     [SerializeField] private Transform m_CenterTransform;
 
     [Header("Cell Spacing")]
     [SerializeField] private float cellSpaceX;
     [SerializeField] private float cellSpaceY;
-
-    [Header("Grid Anchor")]
-    [Tooltip("Grid ust kenarinin local Z degeri (conveyor altina hizalanir).")]
-    [SerializeField] private float gridTopAnchorZ = 3.5f;
 
     private int m_Width;
     private int m_Height;
@@ -25,7 +23,6 @@ public class CellManager : MonoBehaviour
     public int Height => m_Height;
     public float CellSpaceX => cellSpaceX;
     public float CellSpaceY => cellSpaceY;
-    public float GridTopAnchorZ => gridTopAnchorZ;
 
     private CellData[,] m_CellData;
     private Cell[,] m_Cells;
@@ -54,10 +51,8 @@ public class CellManager : MonoBehaviour
         m_GridPositioner = new CellPositioner(
             m_Width,
             m_Height,
-            m_CenterTransform,
             cellSpaceX,
-            cellSpaceY,
-            gridTopAnchorZ);
+            cellSpaceY);
         m_PositionList = new List<Vector3>(m_GridPositioner.PositionList());
         m_CoordinateList = new List<Vector2Int>(m_GridPositioner.CoordinateList());
         CreateCell(m_Width, m_Height);
@@ -99,4 +94,18 @@ public class CellManager : MonoBehaviour
         Cell cell = GetCell(coordinate);
         return cell != null ? cell.transform.position : Vector3.zero;
     }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        if (m_CenterTransform == null)
+            return;
+
+        Gizmos.color = new Color(0.2f, 0.85f, 1f, 1f);
+        Vector3 origin = m_CenterTransform.position;
+        Vector3 right = m_CenterTransform.right * 4f;
+        Gizmos.DrawLine(origin - right, origin + right);
+        Gizmos.DrawSphere(origin, 0.08f);
+    }
+#endif
 }

@@ -12,6 +12,8 @@ namespace RopeWrap.Editor
     /// <summary>
     /// Environment cercevesi harici; grid tam oynanabilir.
     /// Ara duvarlar (L, T IsLocked) ile zorlastirma. Normal grid 5x5'ten 10x10'a.
+    /// Pixel mekanigi: renk basina opaquePixels == threadCount * SpoolMaxCapacity.
+    /// Simdilik sadece Level 1 pixel dengeli uretilir.
     /// </summary>
     public class LevelGeneratorWindow : EditorWindow
     {
@@ -20,26 +22,136 @@ namespace RopeWrap.Editor
         private const int MaxGridSize = 10;
         private const int MinThreadsPerTunnel = 2;
 
+        /// <summary> Thread.prefab SpoolController.maxCapacity ile ayni tek kaynak. </summary>
+        private const int SpoolMaxCapacity = 10;
+
         [MenuItem("Tools/Generate 100 Levels")]
         public static void Open()
         {
             GetWindow<LevelGeneratorWindow>("Level Generator").Show();
         }
 
-        private void OnGUI()
+        [MenuItem("Tools/Pixel Flow/Generate Level 1 (Balanced)")]
+        public static void GenerateLevel1Menu()
         {
-            if (GUILayout.Button("Generate 100 Levels", GUILayout.Height(32)))
+            GenerateAndSaveLevel1();
+        }
+
+        /// <summary> Unity batchmode: -executeMethod RopeWrap.Editor.LevelGeneratorWindow.GenerateLevel1Batch </summary>
+        public static void GenerateLevel1Batch()
+        {
+            try
             {
-                GenerateAll();
+                GenerateAndSaveLevel1();
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[LevelGenerator] Level 1 batch failed: {ex}");
+                EditorApplication.Exit(1);
             }
         }
 
-        private static void GenerateAll()
+        private void OnGUI()
+        {
+            EditorGUILayout.HelpBox(
+                "Level 1: pixel mekanigine gore renk basina kapasite dengeli uretilir " +
+                $"(opaquePixels == threads * {SpoolMaxCapacity}). Diger leveller simdilik eski grid mantigi.",
+                MessageType.Info);
+
+            if (GUILayout.Button("Generate Level 1 Only (Balanced)", GUILayout.Height(28)))
+                GenerateAndSaveLevel1();
+
+            if (GUILayout.Button("Generate 100 Levels", GUILayout.Height(32)))
+                GenerateAll();
+        }
+
+        private static void GenerateAndSaveLevel1()
+        {
+            EnsureLevelsFolder();
+            string path = $"{LevelsFolder}/Level_1.asset";
+            LevelData generated = GenerateEasyBalancedLevel1();
+            LevelData existing = AssetDatabase.LoadAssetAtPath<LevelData>(path);
+
+            if (existing != null)
+            {
+                // GUID koru: Odin alanlarini mevcut asset uzerine yaz.
+                CopyLevelDataFields(generated, existing);
+                EditorUtility.SetDirty(existing);
+                UnityEngine.Object.DestroyImmediate(generated);
+                generated = existing;
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(generated, path);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            EditorGUIUtility.PingObject(generated);
+            Debug.Log(
+                "[LevelGenerator] Level 1 hazir: 2 Red + 2 Yellow spool, " +
+                $"20+20 piksel, kapasite={4 * SpoolMaxCapacity}, plate=4.");
+        }
+
+        /// <summary> Generated instance alanlarini hedef LevelData'ya tasir (GUID korunur). </summary>
+        private static void CopyLevelDataFields(LevelData source, LevelData target)
+        {
+            Type levelType = typeof(LevelData);
+            Type baseType = typeof(ScriptableLevelBase);
+
+            SetField(levelType, target, "m_Width", source.Width);
+            SetField(levelType, target, "m_Height", source.Height);
+            SetField(levelType, target, "m_CellData", source.CellData);
+            SetField(levelType, target, "m_TunnelThreadData", source.TunnelThreadData ?? new List<TunnelData>());
+            SetField(levelType, target, "m_QuestionThreadData", source.QuestionThreadData ?? new List<ThreadData>());
+            SetField(levelType, target, "m_SlotData", source.SlotData);
+            SetField(levelType, target, "m_PlateCount", source.PlateCount);
+
+            SetField(baseType, target, "m_IsUnlocked", true);
+            SetField(baseType, target, "m_MoveCount", 0);
+            SetField(baseType, target, "m_Time", 0f);
+            SetField(baseType, target, "m_IsBossLevel", false);
+            SetField(baseType, target, "m_IsBonusLevel", false);
+
+            List<PixelData> pixels = new List<PixelData>(40);
+            PixelCellData[,] grid = source.PixelGrid;
+            if (grid != null)
+            {
+                int w = grid.GetLength(0);
+                int h = grid.GetLength(1);
+                for (int x = 0; x < w; x++)
+                {
+                    for (int y = 0; y < h; y++)
+                    {
+                        PixelCellData cell = grid[x, y];
+                        if (cell == null || !cell.HasPixel)
+                            continue;
+                        pixels.Add(new PixelData
+                        {
+                            position = new Vector2Int(x, y),
+                            color = cell.Color,
+                            paletteId = cell.PaletteId
+                        });
+                    }
+                }
+            }
+
+            target.ApplyPixelBake(pixels, source.PixelSize);
+            SyncFacadeProperties(target);
+        }
+
+        private static void EnsureLevelsFolder()
         {
             if (!AssetDatabase.IsValidFolder("Assets/Resources"))
                 AssetDatabase.CreateFolder("Assets", "Resources");
             if (!AssetDatabase.IsValidFolder("Assets/Resources/Levels"))
                 AssetDatabase.CreateFolder("Assets/Resources", "Levels");
+        }
+
+        private static void GenerateAll()
+        {
+            EnsureLevelsFolder();
 
             for (int n = 1; n <= 100; n++)
             {
@@ -66,6 +178,10 @@ namespace RopeWrap.Editor
 
         private static LevelData GenerateLevel(int levelIndex)
         {
+            // Simdilik sadece Level 1 yeni pixel mekanigine gore dengeli.
+            if (levelIndex == 1)
+                return GenerateEasyBalancedLevel1();
+
             int gridW = GetGridSizeForLevel(levelIndex);
             int gridH = gridW;
 
@@ -92,6 +208,171 @@ namespace RopeWrap.Editor
                 tunnelColorIndices, questionColorIndices);
             SyncFacadeProperties(level);
             return level;
+        }
+
+        /// <summary>
+        /// Kolay tutorial Level 1:
+        /// 2 Red + 2 Yellow grid makara, tunnel/question/duvar yok.
+        /// Renk basina 20 piksel = 2 spool * 10 kapasite. Toplam 40 = 40.
+        /// </summary>
+        private static LevelData GenerateEasyBalancedLevel1()
+        {
+            const int gridW = 5;
+            const int gridH = 5;
+            const int redLevel = (int)GeneralColor.Red;
+            const int yellowLevel = (int)GeneralColor.Yellow;
+            const int redSpools = 2;
+            const int yellowSpools = 2;
+
+            LevelData level = ScriptableObject.CreateInstance<LevelData>();
+            Type levelType = typeof(LevelData);
+            Type baseType = typeof(ScriptableLevelBase);
+
+            SetField(levelType, level, "m_Width", gridW);
+            SetField(levelType, level, "m_Height", gridH);
+
+            CellData[,] cellData = new CellData[gridW, gridH];
+            for (int x = 0; x < gridW; x++)
+                for (int y = 0; y < gridH; y++)
+                    cellData[x, y] = new CellData();
+
+            // Ust satira yakin, kolay erisilebilir sabit yerlesim.
+            cellData[1, 4].ColorLevel = redLevel;
+            cellData[3, 4].ColorLevel = redLevel;
+            cellData[2, 4].ColorLevel = yellowLevel;
+            cellData[2, 3].ColorLevel = yellowLevel;
+
+            SetField(levelType, level, "m_CellData", cellData);
+            SetField(levelType, level, "m_TunnelThreadData", new List<TunnelData>());
+            SetField(levelType, level, "m_QuestionThreadData", new List<ThreadData>());
+
+            SlotData slotData = new SlotData();
+            SetField(typeof(SlotData), slotData, "m_Count", SlotCount.Five);
+            SetField(typeof(SlotData), slotData, "m_LockedByIndex", new List<bool> { false, false, false, false, false });
+            SetField(levelType, level, "m_SlotData", slotData);
+
+            // Tum makaralar ayni anda binebilsin.
+            int plateCount = redSpools + yellowSpools;
+            SetField(levelType, level, "m_PlateCount", plateCount);
+
+            SetField(baseType, level, "m_IsUnlocked", true);
+            SetField(baseType, level, "m_MoveCount", 0);
+            SetField(baseType, level, "m_Time", 0f);
+            SetField(baseType, level, "m_IsBossLevel", false);
+            SetField(baseType, level, "m_IsBonusLevel", false);
+
+            SyncFacadeProperties(level);
+
+            List<PixelData> pixels = BuildBalancedPixelPattern(
+                redLevel,
+                yellowLevel,
+                redSpools * SpoolMaxCapacity,
+                yellowSpools * SpoolMaxCapacity,
+                out Vector2Int pixelSize);
+            level.ApplyPixelBake(pixels, pixelSize);
+
+            ValidateColorCapacityBalance(level, redLevel, redSpools * SpoolMaxCapacity);
+            ValidateColorCapacityBalance(level, yellowLevel, yellowSpools * SpoolMaxCapacity);
+            return level;
+        }
+
+        /// <summary>
+        /// 8x5 fabric: sol 4 kolon Red, sag 4 kolon Yellow.
+        /// Her renk SpoolMaxCapacity * spoolCount kadar opak piksel.
+        /// </summary>
+        private static List<PixelData> BuildBalancedPixelPattern(
+            int redLevel,
+            int yellowLevel,
+            int redPixelCount,
+            int yellowPixelCount,
+            out Vector2Int pixelSize)
+        {
+            const int width = 8;
+            const int height = 5;
+            pixelSize = new Vector2Int(width, height);
+
+            if (redPixelCount != width / 2 * height || yellowPixelCount != width / 2 * height)
+            {
+                throw new InvalidOperationException(
+                    $"Level 1 pixel deseni {width / 2}x{height} bekliyor " +
+                    $"(red={redPixelCount}, yellow={yellowPixelCount}).");
+            }
+
+            Color32 redColor = ResolveFacadeColor32(redLevel);
+            Color32 yellowColor = ResolveFacadeColor32(yellowLevel);
+            List<PixelData> pixels = new List<PixelData>(redPixelCount + yellowPixelCount);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    bool isRed = x < width / 2;
+                    pixels.Add(new PixelData
+                    {
+                        position = new Vector2Int(x, y),
+                        color = isRed ? redColor : yellowColor,
+                        paletteId = (short)(isRed ? redLevel : yellowLevel)
+                    });
+                }
+            }
+
+            return pixels;
+        }
+
+        private static Color32 ResolveFacadeColor32(int facadeLevel)
+        {
+            ProjectSettings settings = ProjectSettings.Load();
+            if (settings != null)
+            {
+                List<FacadeProperty> facades = settings.GetOriginalFacadeProperties();
+                if (facades != null)
+                {
+                    for (int i = 0; i < facades.Count; i++)
+                    {
+                        FacadeProperty facade = facades[i];
+                        if (facade == null || facade.Level != facadeLevel)
+                            continue;
+
+                        Color c = facade.Color;
+                        return new Color32(
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.r * 255f), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.g * 255f), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.b * 255f), 0, 255),
+                            255);
+                    }
+                }
+            }
+
+            // Fallback: bilinen Red / Yellow tonlari.
+            if (facadeLevel == (int)GeneralColor.Yellow)
+                return new Color32(202, 180, 78, 255);
+            return new Color32(230, 49, 72, 255);
+        }
+
+        private static void ValidateColorCapacityBalance(LevelData level, int paletteId, int expectedCapacity)
+        {
+            PixelCellData[,] grid = level.PixelGrid;
+            if (grid == null)
+                throw new InvalidOperationException("Level 1 PixelGrid bos.");
+
+            int count = 0;
+            int w = grid.GetLength(0);
+            int h = grid.GetLength(1);
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    PixelCellData cell = grid[x, y];
+                    if (cell != null && cell.HasPixel && cell.PaletteId == paletteId)
+                        count++;
+                }
+            }
+
+            if (count != expectedCapacity)
+            {
+                throw new InvalidOperationException(
+                    $"Level 1 dengesizlik: paletteId={paletteId} pixels={count} expected={expectedCapacity}.");
+            }
         }
 
         /// <summary> Zorluk: ilk leveller daha az makara ve basit; sonra giderek artar. </summary>

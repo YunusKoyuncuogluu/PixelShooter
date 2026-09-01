@@ -158,7 +158,10 @@ public class PlateQueueManager : MonoBehaviour
         plate.RecycleHide();
     }
 
-    /// <summary> Conveyor ilk point (percent 0) + duz rotasyon. </summary>
+    /// <summary>
+    /// Boarding konumu: BoardingAnchor (varsa) kaynak. Rotasyon spline tegetinden.
+    /// Spline yuzeyi ile anchor farkliysa plate spline'a degil anchor'a oturur.
+    /// </summary>
     public void GetConveyorStartPose(Plate settingsSource, out Vector3 position, out Quaternion rotation)
     {
         float yOffset = settingsSource != null ? settingsSource.BoardingYOffset : 0f;
@@ -167,9 +170,6 @@ public class PlateQueueManager : MonoBehaviour
         if (conveyorSpline != null)
         {
             SplineSample sample = conveyorSpline.Evaluate(0.0);
-            position = sample.position;
-            position.y += yOffset;
-
             Vector3 forward = sample.forward;
             forward.y = 0f;
             if (forward.sqrMagnitude > 0.0001f)
@@ -177,12 +177,24 @@ public class PlateQueueManager : MonoBehaviour
             else
                 rotation = Quaternion.Euler(flatEuler);
 
+            if (boardingAnchor != null)
+            {
+                position = boardingAnchor.position;
+                position.y += yOffset;
+            }
+            else
+            {
+                position = sample.position;
+                position.y += yOffset;
+            }
+
             return;
         }
 
         if (boardingAnchor != null)
         {
             position = boardingAnchor.position;
+            position.y += yOffset;
             rotation = boardingAnchor.rotation * Quaternion.Euler(flatEuler);
             return;
         }
