@@ -2117,11 +2117,7 @@ MonoBehaviour:
   tunnelFactory: {fileID: 7036010414862031397, guid: e6452b789857a4e4084bc89958e3b1c0, type: 3}
   plateFactory: {fileID: 100003, guid: 976bd02a0c9747cc80af5e5450f32c91, type: 3}
   objectPoolPrefab: {fileID: 8622582206631468190, guid: c3a91e7b4d2f4a6e8b0c1d5f6a7e8c11, type: 3}
-  shooterSelectClip: {fileID: 8300000, guid: 375ad76e0e0154306b0a76cf95fce340, type: 3}
-  bulletFireClip: {fileID: 8300000, guid: 6b9367125f8d24a418bb491ea7b6b701, type: 3}
-  levelWinClip: {fileID: 8300000, guid: f5cce50d36a5f42709e3fac4ccc19092, type: 3}
-  levelFailClip: {fileID: 8300000, guid: 9337c7f1477264ceabb08971320682dd, type: 3}
-  sfxGroup: {fileID: 1252004305131343198, guid: 6f48f2c6a75b14710bf94307040ee527, type: 2}
+  gameAudioCatalog: {fileID: 11400000, guid: c5b8d2e14f6a4c9b8e0d1a3f5c7b9d24, type: 2}
 --- !u!1 &2000680360
 GameObject:
   m_ObjectHideFlags: 0

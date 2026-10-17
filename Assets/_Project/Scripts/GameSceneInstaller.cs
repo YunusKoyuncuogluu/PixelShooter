@@ -1,7 +1,6 @@
 using PixelShooter.Pooling;
 using PixelShooter.UI;
 using PixelShooter.Game;
-using UnityEngine.Audio;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -106,25 +105,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     [SerializeField]
     [FoldoutGroup("Audio")]
-    [FormerlySerializedAs("m_ShooterSelectClip")]
-    private AudioClip shooterSelectClip;
-
-    [SerializeField]
-    [FoldoutGroup("Audio")]
-    [FormerlySerializedAs("m_BulletFireClip")]
-    private AudioClip bulletFireClip;
-
-    [SerializeField]
-    [FoldoutGroup("Audio")]
-    private AudioClip levelWinClip;
-
-    [SerializeField]
-    [FoldoutGroup("Audio")]
-    private AudioClip levelFailClip;
-
-    [SerializeField]
-    [FoldoutGroup("Audio")]
-    private AudioMixerGroup sfxGroup;
+    private GameAudioCatalog gameAudioCatalog;
 
     public override void InstallBindings()
     {
@@ -141,13 +122,12 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         {
             Container.Bind<ObjectPool>().FromComponentInNewPrefab(objectPoolPrefab).AsSingle().NonLazy();
         }
-        Container.Bind<GameAudio>().FromNewComponentOnNewGameObject().AsSingle()
-            .OnInstantiated<GameAudio>((context, audio) =>
-            {
-                audio.AssignOutput(sfxGroup);
-                audio.AssignClips(shooterSelectClip, bulletFireClip, levelWinClip, levelFailClip);
-            })
-            .NonLazy();
+        if (gameAudioCatalog != null)
+        {
+            Container.BindInstance(gameAudioCatalog).AsSingle();
+        }
+
+        Container.Bind<GameAudio>().FromNewComponentOnNewGameObject().AsSingle().NonLazy();
         Container.Bind<UIManager>().FromNewComponentOnNewGameObject().AsSingle()
             .OnInstantiated<UIManager>((context, ui) => ui.Configure(gamePagePrefab, failPagePrefab, completedPagePrefab, settingPopupPrefab))
             .NonLazy();

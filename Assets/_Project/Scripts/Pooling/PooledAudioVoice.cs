@@ -21,7 +21,7 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
         source.dopplerLevel = 0f;
     }
 
-    public int Play(AudioClip clip, float volume, AudioMixerGroup outputGroup)
+    public int Play(AudioClip clip, float volume, float pitch, AudioMixerGroup outputGroup)
     {
         playVersion++;
         if (source == null || clip == null)
@@ -32,7 +32,7 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
         source.outputAudioMixerGroup = outputGroup;
         source.clip = clip;
         source.volume = volume;
-        source.pitch = 1f;
+        source.pitch = pitch;
         source.loop = false;
         source.ignoreListenerPause = true;
         source.Play();
