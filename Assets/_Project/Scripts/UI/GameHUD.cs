@@ -2,10 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Zenject;
-using RopeWrap.Game;
+using PixelShooter.Game;
 using UnityEngine.Serialization;
 
-namespace RopeWrap.UI
+namespace PixelShooter.UI
 {
 
     public class GameHUD : MonoBehaviour

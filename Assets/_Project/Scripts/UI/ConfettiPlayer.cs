@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace RopeWrap.UI
+namespace PixelShooter.UI
 {
     public class ConfettiPlayer : MonoBehaviour
     {
