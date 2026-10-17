@@ -45,6 +45,18 @@ public class ImageManager
     public int OpaqueRemaining => opaqueRemaining;
     public Vector3 GridCenter => gridCenter;
 
+    public float ClaimSampleDistance
+    {
+        get
+        {
+            float spacing = imageGridRenderer != null ? imageGridRenderer.CellSpacing : 0.25f;
+            if (spacing < 0.0001f)
+                spacing = 0.25f;
+
+            return spacing * 0.45f;
+        }
+    }
+
     public void Construct(LevelData data)
     {
         levelData = data;
@@ -170,7 +182,11 @@ public class ImageManager
             opaqueRemaining = 0;
 
         if (opaqueRemaining == 0)
+        {
+            if (imageGridRenderer != null)
+                imageGridRenderer.HideRemainingImmediate();
             OnImageCleared?.Invoke();
+        }
     }
 
     public void ReleaseReservation(Vector2Int gridPos)

@@ -1,94 +1,69 @@
-using System;
-using System.Collections.Generic;
 using LevelManagement;
-using UnityEngine;
+using PixelShooter.Save;
 using Zenject;
 
-public class LevelManager : IInitializable
+public enum LevelProgressState
 {
-    private const string CurrentLevelPref = "CurrentLevel";
-    private const string LevelDataPath = "Levels/";
+    Locked = 0,
+    Current = 1,
+    Completed = 2
+}
 
-    private ScriptableLevelBase[] scriptableLevelDataArray;
-    private int currentLevelIndex;
+public class LevelManager
+{
+    private readonly LevelDatabase levelDatabase;
+    private readonly SaveManager saveManager;
+    private int currentLevelNumber;
 
-    public int CurrentLevelIndex => currentLevelIndex;
-    public int TotalLevelCount => scriptableLevelDataArray.Length;
-    public ILevelData CurrentLevelData => scriptableLevelDataArray[ResolveClampedLevelIndex()];
-
-    private int ResolveClampedLevelIndex()
+    [Inject]
+    public LevelManager(LevelDatabase levelDatabase, SaveManager saveManager)
     {
-        if (scriptableLevelDataArray == null || scriptableLevelDataArray.Length == 0)
-            return 0;
-
-        if (currentLevelIndex < 0)
-            return 0;
-
-        if (currentLevelIndex < TotalLevelCount)
-            return currentLevelIndex;
-
-        return currentLevelIndex % TotalLevelCount;
+        this.levelDatabase = levelDatabase;
+        this.saveManager = saveManager;
+        currentLevelNumber = saveManager.Data.highestUnlockedLevel;
+        if (currentLevelNumber < 1)
+            currentLevelNumber = 1;
     }
 
-    void IInitializable.Initialize()
-    {
-        currentLevelIndex = LoadLevel();
-        scriptableLevelDataArray = Resources.LoadAll<ScriptableLevelBase>(LevelDataPath);
-        SortLevelsByIndex();
+    public int CurrentLevelNumber => currentLevelNumber;
+    public int CurrentLevelIndex => currentLevelNumber - 1;
+    public int HighestUnlockedLevel => saveManager.Data.highestUnlockedLevel;
+    public int Coins => saveManager.Data.coins;
+    public ILevelData CurrentLevelData => levelDatabase.GetLevelData(currentLevelNumber);
 
-        int levelNumber = currentLevelIndex + 1;
-        string levelKey = "LevelNumber" + levelNumber;
-        if (PlayerPrefs.GetInt(levelKey, 0) == 0)
-            PlayerPrefs.SetInt(levelKey, 1);
+    public LevelProgressState GetProgressState(int levelNumber)
+    {
+        int highest = saveManager.Data.highestUnlockedLevel;
+        if (levelNumber > highest)
+            return LevelProgressState.Locked;
+
+        if (levelNumber == highest)
+            return LevelProgressState.Current;
+
+        return LevelProgressState.Completed;
     }
 
-    public void SetLevel(int levelIndex)
+    public bool TrySelectLevel(int levelNumber)
     {
-        currentLevelIndex = levelIndex;
-        SaveLevel();
+        if (levelNumber < 1)
+            return false;
+
+        if (GetProgressState(levelNumber) == LevelProgressState.Locked)
+            return false;
+
+        currentLevelNumber = levelNumber;
+        return true;
     }
-
-    private void SaveLevel() => PlayerPrefs.SetInt(CurrentLevelPref, currentLevelIndex);
-    private int LoadLevel() => PlayerPrefs.GetInt(CurrentLevelPref, 0);
-
-    private void SortLevelsByIndex()
-    {
-        if (scriptableLevelDataArray == null || scriptableLevelDataArray.Length == 0)
-            return;
-
-        List<ScriptableLevelBase> sorted = new List<ScriptableLevelBase>(scriptableLevelDataArray.Length);
-        for (int i = 0; i < scriptableLevelDataArray.Length; i++)
-            sorted.Add(scriptableLevelDataArray[i]);
-
-        sorted.Sort((a, b) => ParseLevelIndex(a.name).CompareTo(ParseLevelIndex(b.name)));
-        scriptableLevelDataArray = sorted.ToArray();
-    }
-
-    private int ParseLevelIndex(string levelName)
-    {
-        if (string.IsNullOrEmpty(levelName))
-            return 0;
-
-        const string prefix = "Level_";
-        if (!levelName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return 0;
-
-        string num = levelName.Substring(prefix.Length);
-        return int.TryParse(num, out int index) ? index : 0;
-    }
-
-    public void IncreaseLevel() => SetLevel(currentLevelIndex + 1);
 
     public void CompleteCurrentLevel()
     {
-        ILevelData currentLevelData = CurrentLevelData;
-        currentLevelData.Complete(0);
-        IncreaseLevel();
-        ILevelData nextLevelData = CurrentLevelData;
-        nextLevelData.Unlock();
-    }
+        int completedLevel = currentLevelNumber;
 
-    public void FailCurrentLevel()
-    {
+        PlayerData data = saveManager.Data;
+
+        if (completedLevel >= data.highestUnlockedLevel)
+            data.highestUnlockedLevel = completedLevel + 1;
+
+        currentLevelNumber = completedLevel + 1;
     }
 }

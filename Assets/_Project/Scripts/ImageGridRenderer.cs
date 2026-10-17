@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using LevelManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class ImageGridRenderer : MonoBehaviour
 {
@@ -76,6 +77,7 @@ public class ImageGridRenderer : MonoBehaviour
             cubeTransform.localRotation = Quaternion.identity;
             cubeTransform.localScale = scale;
             cube.renderer.enabled = true;
+            cube.renderer.shadowCastingMode = ShadowCastingMode.On;
             if (instanceMaterial != null)
                 cube.renderer.sharedMaterial = instanceMaterial;
             cube.paletteId = pixel.paletteId;
@@ -168,6 +170,12 @@ public class ImageGridRenderer : MonoBehaviour
 
     private void PlayHideTween(int cubeIndex, int key)
     {
+        PixelCube cube = cubes[cubeIndex];
+        if (cube.renderer != null)
+        {
+            cube.renderer.shadowCastingMode = ShadowCastingMode.Off;
+        }
+
         float baseScale = cellScale;
         float poppedY = cellScale * HidePopY;
         float punch = baseScale;
@@ -175,26 +183,44 @@ public class ImageGridRenderer : MonoBehaviour
 
         Sequence sequence = DOTween.Sequence();
         sequence.SetTarget(this);
-        sequence.SetRecyclable(true);
         sequence.Append(DOTween.To(() => punch, value =>
         {
             punch = value;
             ApplyHideScale(cubeIndex, new Vector3(baseScale, value, baseScale));
-        }, poppedY, HidePunchDuration).SetEase(Ease.OutQuad).SetRecyclable(true));
+        }, poppedY, HidePunchDuration).SetEase(Ease.OutQuad));
         sequence.Append(DOTween.To(() => collapse, value =>
         {
             collapse = value;
             float remain = 1f - value;
             ApplyHideScale(cubeIndex, new Vector3(baseScale * remain, poppedY * remain, baseScale * remain));
-        }, 1f, HideCollapseDuration).SetEase(Ease.InQuad).SetRecyclable(true));
-        sequence.OnComplete(() =>
-        {
-            RemoveHideKey(key);
-            if (cubeIndex < 0 || cubeIndex >= cubes.Count)
-                return;
+        }, 1f, HideCollapseDuration).SetEase(Ease.InQuad));
+        sequence.OnComplete(() => FinishHidden(cubeIndex, key));
+        sequence.OnKill(() => FinishHidden(cubeIndex, key));
+    }
 
-            FinishPixel(cubes[cubeIndex]);
-        });
+    public void HideRemainingImmediate()
+    {
+        DOTween.Kill(this);
+        int count = visibleCount < cubes.Count ? visibleCount : cubes.Count;
+        for (int i = 0; i < count; i++)
+        {
+            PixelCube cube = cubes[i];
+            if (cube.root == null || cube.renderer == null || !cube.renderer.enabled)
+                continue;
+
+            FinishPixel(cube);
+        }
+
+        activeHideCount = 0;
+    }
+
+    private void FinishHidden(int cubeIndex, int key)
+    {
+        RemoveHideKey(key);
+        if (cubeIndex < 0 || cubeIndex >= cubes.Count)
+            return;
+
+        FinishPixel(cubes[cubeIndex]);
     }
 
     private void ApplyHideScale(int cubeIndex, Vector3 scale)

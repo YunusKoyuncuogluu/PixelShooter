@@ -99,6 +99,14 @@ public class CellManager : MonoBehaviour
         return cells[coordinate.x, coordinate.y].IsFull;
     }
 
+    public void SetTunnelReserved(Vector2Int coordinate, bool reserved)
+    {
+        if (!IsInside(coordinate))
+            return;
+
+        cells[coordinate.x, coordinate.y].SetTunnelReserved(reserved);
+    }
+
     public Cell GetCell(Vector2Int coordinate)
     {
         if (coordinate.x < 0 || coordinate.x >= this.width || coordinate.y < 0 || coordinate.y >= this.height)

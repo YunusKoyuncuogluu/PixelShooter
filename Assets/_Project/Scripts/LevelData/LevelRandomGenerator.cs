@@ -11,6 +11,7 @@ namespace LevelManagement
     internal class LevelRandomGenerator
     {
         private readonly LevelData level;
+        private int maxShotsPerShooter;
 
         internal LevelRandomGenerator(LevelData level)
         {
@@ -41,11 +42,10 @@ namespace LevelManagement
             colorIds.Sort();
             Undo.RecordObject(level, "Generate Random Level");
 
-            int minimumCells = Mathf.Max(colorIds.Count + 12, 20);
-            EnsureBoardCapacity(minimumCells);
+            System.Random random = new System.Random(Guid.NewGuid().GetHashCode());
+            EnsureExistingCells();
             ClearBoard();
 
-            System.Random random = new System.Random(Guid.NewGuid().GetHashCode());
             bool solved = false;
             for (int attempt = 0; attempt < 24 && !solved; attempt++)
             {
@@ -65,14 +65,33 @@ namespace LevelManagement
 
                 Shuffle(openCells, random);
 
-                int emptyBudget = Mathf.Max(4, cellCount * 35 / 100);
-                int occupied = openCells.Count - emptyBudget;
-                if (occupied > openCells.Count * 45 / 100)
-                    occupied = Mathf.Max(4, openCells.Count * 45 / 100);
-                if (occupied < 4)
-                    occupied = Mathf.Min(4, openCells.Count);
+                int emptyRatio = random.Next(30, 51);
+                int emptyKeep = cellCount * emptyRatio / 100;
+                if (emptyKeep < 2)
+                {
+                    emptyKeep = 2;
+                }
+
+                if (emptyKeep > openCells.Count - colorIds.Count)
+                {
+                    emptyKeep = openCells.Count - colorIds.Count;
+                }
+
+                if (emptyKeep < 0)
+                {
+                    emptyKeep = 0;
+                }
+
+                int occupied = openCells.Count - emptyKeep;
+                if (occupied < colorIds.Count)
+                {
+                    occupied = Mathf.Min(openCells.Count, colorIds.Count);
+                }
+
                 if (occupied > openCells.Count)
+                {
                     occupied = openCells.Count;
+                }
 
                 int tunnelBudget = occupied >= 6 ? random.Next(1, 3) : (occupied > 1 ? 1 : 0);
                 int questionBudget = occupied >= 5 ? random.Next(1, 3) : (occupied > 2 ? 1 : 0);
@@ -115,9 +134,8 @@ namespace LevelManagement
                     slotCount = shooterCells.Count + questionCells.Count + tunnelCells.Count * innerPerTunnel;
                 }
 
-                int reservedEmpty = Mathf.Max(4, cellCount * 30 / 100);
                 int nextOpen = occupied;
-                while (slotCount < colorIds.Count && nextOpen < openCells.Count && openCells.Count - nextOpen > reservedEmpty)
+                while (slotCount < colorIds.Count && nextOpen < openCells.Count && openCells.Count - nextOpen > emptyKeep)
                 {
                     shooterCells.Add(openCells[nextOpen]);
                     nextOpen++;
@@ -143,13 +161,364 @@ namespace LevelManagement
                     cell.ChangeLocked(true);
                 }
 
+                EnsureEveryColorHasShooter(pixelCounts, random, emptyKeep);
                 solved = CanExtractAllShooters();
             }
 
             level.gridYMigrated = true;
             level.ApplyShotPlan();
+            VaryShotCounts(random);
             level.editorShotPlan = null;
             EditorUtility.SetDirty(level);
+        }
+
+        private struct ShotWrite
+        {
+            public CellData Cell;
+            public ShooterData Data;
+        }
+
+        private void VaryShotCounts(System.Random random)
+        {
+            Dictionary<int, int> pixelCounts = CollectPixelColorCounts();
+            Dictionary<int, List<ShotWrite>> groups = new Dictionary<int, List<ShotWrite>>(8);
+            if (level.CellData != null)
+            {
+                int questionCursor = 0;
+                for (int gameY = 0; gameY < level.height; gameY++)
+                {
+                    int row = level.GameYToArrayRow(gameY);
+                    if (row < 0 || row >= level.CellData.GetLength(1))
+                    {
+                        continue;
+                    }
+
+                    for (int x = 0; x < level.width && x < level.CellData.GetLength(0); x++)
+                    {
+                        CellData cell = level.CellData[x, row];
+                        if (cell == null)
+                        {
+                            continue;
+                        }
+
+                        if (cell.IsQuestionShooter)
+                        {
+                            ShooterData data = null;
+                            int colorId = 0;
+                            if (level.questionShooterData != null && questionCursor < level.questionShooterData.Count)
+                            {
+                                data = level.questionShooterData[questionCursor];
+                                questionCursor++;
+                                if (data != null)
+                                {
+                                    colorId = (int)data.Color;
+                                }
+                            }
+
+                            if (colorId > 0)
+                            {
+                                AddShotWrite(groups, colorId, cell, data);
+                            }
+
+                            continue;
+                        }
+
+                        if (cell.IsTunnel || cell.ColorLevel <= 0)
+                        {
+                            continue;
+                        }
+
+                        AddShotWrite(groups, cell.ColorLevel, cell, null);
+                    }
+                }
+            }
+
+            if (level.tunnelShooterData != null)
+            {
+                for (int tunnelIndex = 0; tunnelIndex < level.tunnelShooterData.Count; tunnelIndex++)
+                {
+                    TunnelData tunnel = level.tunnelShooterData[tunnelIndex];
+                    if (tunnel == null || tunnel.Shooters == null)
+                    {
+                        continue;
+                    }
+
+                    for (int shooterIndex = 0; shooterIndex < tunnel.Shooters.Count; shooterIndex++)
+                    {
+                        ShooterData data = tunnel.Shooters[shooterIndex];
+                        if (data == null || (int)data.Color <= 0)
+                        {
+                            continue;
+                        }
+
+                        AddShotWrite(groups, (int)data.Color, null, data);
+                    }
+                }
+            }
+
+            List<int> colorOrder = new List<int>(groups.Count);
+            foreach (KeyValuePair<int, List<ShotWrite>> pair in groups)
+            {
+                colorOrder.Add(pair.Key);
+            }
+
+            for (int i = 1; i < colorOrder.Count; i++)
+            {
+                int key = colorOrder[i];
+                int keyCount = groups[key].Count;
+                int slot = i - 1;
+                while (slot >= 0 && groups[colorOrder[slot]].Count > keyCount)
+                {
+                    colorOrder[slot + 1] = colorOrder[slot];
+                    slot--;
+                }
+
+                colorOrder[slot + 1] = key;
+            }
+
+            Dictionary<int, int> usedCounts = new Dictionary<int, int>(16);
+            for (int colorIndex = 0; colorIndex < colorOrder.Count; colorIndex++)
+            {
+                int colorId = colorOrder[colorIndex];
+                List<ShotWrite> writes = groups[colorId];
+                int total = 0;
+                if (pixelCounts.TryGetValue(colorId, out int pixels))
+                {
+                    total = pixels;
+                }
+
+                int[] shares = SplitDistinct(total, writes.Count, random, usedCounts);
+                for (int i = 0; i < writes.Count; i++)
+                {
+                    ShotWrite write = writes[i];
+                    if (write.Cell != null)
+                    {
+                        write.Cell.SetShotCount(shares[i]);
+                    }
+
+                    if (write.Data != null)
+                    {
+                        write.Data.SetShotCount(shares[i]);
+                    }
+
+                    NoteShotCount(usedCounts, shares[i]);
+                }
+            }
+        }
+
+        private void AddShotWrite(Dictionary<int, List<ShotWrite>> groups, int colorId, CellData cell, ShooterData data)
+        {
+            if (!groups.TryGetValue(colorId, out List<ShotWrite> group))
+            {
+                group = new List<ShotWrite>(4);
+                groups[colorId] = group;
+            }
+
+            ShotWrite write = new ShotWrite();
+            write.Cell = cell;
+            write.Data = data;
+            group.Add(write);
+        }
+
+        private int[] SplitDistinct(int total, int parts, System.Random random, Dictionary<int, int> usedCounts)
+        {
+            int[] shares = new int[parts];
+            if (parts <= 0 || total <= 0)
+            {
+                return shares;
+            }
+
+            if (parts == 1)
+            {
+                shares[0] = total;
+                return shares;
+            }
+
+            int cap = maxShotsPerShooter;
+            if (cap < 1)
+            {
+                cap = 1;
+            }
+
+            int softCap = cap;
+            if (parts * softCap < total)
+            {
+                softCap = total;
+            }
+
+            int floor = 1;
+            if (total < parts)
+            {
+                floor = 0;
+            }
+
+            int remaining = total;
+            for (int i = 0; i < parts; i++)
+            {
+                int left = parts - i;
+                int minThis = remaining - softCap * (left - 1);
+                if (minThis < floor)
+                {
+                    minThis = floor;
+                }
+
+                int maxThis = remaining - floor * (left - 1);
+                if (maxThis > softCap)
+                {
+                    maxThis = softCap;
+                }
+
+                if (maxThis < minThis)
+                {
+                    maxThis = minThis;
+                }
+
+                shares[i] = PickDistinctValue(minThis, maxThis, shares, i, random, usedCounts);
+                remaining -= shares[i];
+            }
+
+            SeparateDuplicates(shares, floor, softCap, usedCounts);
+            return shares;
+        }
+
+        private int PickDistinctValue(int low, int high, int[] shares, int count, System.Random random, Dictionary<int, int> usedCounts)
+        {
+            if (high < low)
+            {
+                high = low;
+            }
+
+            int center = (low + high) / 2;
+            int bestValue = low;
+            int bestScore = int.MinValue;
+            for (int value = low; value <= high; value++)
+            {
+                int score = random.Next(0, 8);
+                score -= Mathf.Abs(value - center) / 2;
+                if (CountIn(shares, count, value) > 0)
+                {
+                    score -= 60;
+                }
+
+                int seen = 0;
+                if (usedCounts != null && usedCounts.TryGetValue(value, out int current))
+                {
+                    seen = current;
+                }
+
+                score -= seen * 40;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestValue = value;
+                }
+            }
+
+            return bestValue;
+        }
+
+        private void SeparateDuplicates(int[] shares, int low, int high, Dictionary<int, int> usedCounts)
+        {
+            for (int pass = 0; pass < shares.Length * 6; pass++)
+            {
+                bool moved = false;
+                for (int i = 0; i < shares.Length && !moved; i++)
+                {
+                    for (int j = i + 1; j < shares.Length; j++)
+                    {
+                        if (shares[i] != shares[j])
+                        {
+                            continue;
+                        }
+
+                        int down = shares[i] - 1;
+                        int up = shares[j] + 1;
+                        if (down < low || up > high)
+                        {
+                            continue;
+                        }
+
+                        if (CountIn(shares, shares.Length, down) > 0 || CountIn(shares, shares.Length, up) > 0)
+                        {
+                            continue;
+                        }
+
+                        int downSeen = 0;
+                        int upSeen = 0;
+                        if (usedCounts != null && usedCounts.TryGetValue(down, out int downCurrent))
+                        {
+                            downSeen = downCurrent;
+                        }
+
+                        if (usedCounts != null && usedCounts.TryGetValue(up, out int upCurrent))
+                        {
+                            upSeen = upCurrent;
+                        }
+
+                        if (downSeen > 0 || upSeen > 0)
+                        {
+                            continue;
+                        }
+
+                        shares[i] = down;
+                        shares[j] = up;
+                        moved = true;
+                        break;
+                    }
+                }
+
+                if (!moved)
+                {
+                    return;
+                }
+            }
+        }
+
+        private int CountIn(int[] shares, int count, int value)
+        {
+            int found = 0;
+            int limit = count;
+            if (limit > shares.Length)
+            {
+                limit = shares.Length;
+            }
+
+            for (int i = 0; i < limit; i++)
+            {
+                if (shares[i] == value)
+                {
+                    found++;
+                }
+            }
+
+            return found;
+        }
+
+        private void NoteShotCount(Dictionary<int, int> usedCounts, int value)
+        {
+            if (usedCounts == null)
+            {
+                return;
+            }
+
+            if (usedCounts.TryGetValue(value, out int current))
+            {
+                usedCounts[value] = current + 1;
+                return;
+            }
+
+            usedCounts[value] = 1;
+        }
+
+        private void AddCount(Dictionary<int, int> counts, int colorId)
+        {
+            if (counts.TryGetValue(colorId, out int current))
+            {
+                counts[colorId] = current + 1;
+                return;
+            }
+
+            counts[colorId] = 1;
         }
 
         private Dictionary<int, int> CollectPixelColorCounts()
@@ -179,32 +548,251 @@ namespace LevelManagement
             return pixelCounts;
         }
 
-        private void EnsureBoardCapacity(int minimumCells)
+        private void EnsureExistingCells()
         {
-            if (level.width < 5)
-                level.width = 5;
-
-            if (level.height < 6)
-                level.height = 6;
-
-            if (level.CellData == null || level.CellData.GetLength(0) != level.width || level.CellData.GetLength(1) != level.height)
+            if (level.CellData == null)
             {
-                level.OnWidthChanged();
-                level.OnHeightChanged();
+                return;
             }
 
-            while (level.width * level.height < minimumCells)
+            int rows = level.CellData.GetLength(1);
+            int columns = level.CellData.GetLength(0);
+            int height = level.height;
+            if (height > rows)
             {
-                level.height++;
-                level.OnHeightChanged();
+                height = rows;
             }
 
-            for (int y = 0; y < level.height; y++)
+            int width = level.width;
+            if (width > columns)
             {
-                for (int x = 0; x < level.width; x++)
+                width = columns;
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
                 {
                     if (level.CellData[x, y] == null)
+                    {
                         level.CellData[x, y] = new CellData();
+                    }
+                }
+            }
+        }
+
+        private void EnsureEveryColorHasShooter(Dictionary<int, int> pixelCounts, System.Random random, int emptyKeep)
+        {
+            Dictionary<int, int> shooterCounts = new Dictionary<int, int>(8);
+            List<int> emptyCells = new List<int>(16);
+            List<int> wallCells = new List<int>(16);
+
+            if (level.CellData == null)
+            {
+                return;
+            }
+
+            int questionCursor = 0;
+            for (int y = 0; y < level.height && y < level.CellData.GetLength(1); y++)
+            {
+                for (int x = 0; x < level.width && x < level.CellData.GetLength(0); x++)
+                {
+                    CellData cell = level.CellData[x, y];
+                    if (cell == null)
+                    {
+                        continue;
+                    }
+
+                    if (cell.ColorLevel > 0)
+                    {
+                        AddCount(shooterCounts, cell.ColorLevel);
+                    }
+
+                    if (cell.IsQuestionShooter && level.questionShooterData != null && questionCursor < level.questionShooterData.Count)
+                    {
+                        ShooterData questionData = level.questionShooterData[questionCursor];
+                        questionCursor++;
+                        if (questionData != null && (int)questionData.Color > 0)
+                        {
+                            AddCount(shooterCounts, (int)questionData.Color);
+                        }
+                    }
+
+                    if (cell.IsTunnel || cell.IsQuestionShooter || cell.ColorLevel != 0)
+                    {
+                        continue;
+                    }
+
+                    int index = x + y * level.width;
+                    if (cell.IsLocked)
+                    {
+                        wallCells.Add(index);
+                        continue;
+                    }
+
+                    emptyCells.Add(index);
+                }
+            }
+
+            if (level.tunnelShooterData != null)
+            {
+                for (int tunnelIndex = 0; tunnelIndex < level.tunnelShooterData.Count; tunnelIndex++)
+                {
+                    TunnelData tunnel = level.tunnelShooterData[tunnelIndex];
+                    if (tunnel == null || tunnel.Shooters == null)
+                    {
+                        continue;
+                    }
+
+                    for (int shooterIndex = 0; shooterIndex < tunnel.Shooters.Count; shooterIndex++)
+                    {
+                        ShooterData data = tunnel.Shooters[shooterIndex];
+                        if (data != null && (int)data.Color > 0)
+                        {
+                            AddCount(shooterCounts, (int)data.Color);
+                        }
+                    }
+                }
+            }
+
+            Shuffle(emptyCells, random);
+            Shuffle(wallCells, random);
+            List<int> colorOrder = new List<int>(pixelCounts.Count);
+            foreach (KeyValuePair<int, int> pair in pixelCounts)
+            {
+                if (pair.Value > 0)
+                {
+                    colorOrder.Add(pair.Key);
+                }
+            }
+
+            for (int i = 1; i < colorOrder.Count; i++)
+            {
+                int key = colorOrder[i];
+                int keyPixels = pixelCounts[key];
+                int slot = i - 1;
+                while (slot >= 0 && pixelCounts[colorOrder[slot]] < keyPixels)
+                {
+                    colorOrder[slot + 1] = colorOrder[slot];
+                    slot--;
+                }
+
+                colorOrder[slot + 1] = key;
+            }
+
+            int[] targets = new int[colorOrder.Count];
+            int missing = 0;
+            for (int colorIndex = 0; colorIndex < colorOrder.Count; colorIndex++)
+            {
+                int have = 0;
+                if (shooterCounts.TryGetValue(colorOrder[colorIndex], out int current))
+                {
+                    have = current;
+                }
+
+                targets[colorIndex] = have;
+                if (have < 1)
+                {
+                    targets[colorIndex] = 1;
+                    missing++;
+                }
+            }
+
+            int spare = emptyCells.Count - emptyKeep - missing;
+            if (spare < 0)
+            {
+                spare = 0;
+            }
+
+            int extraBudget = spare;
+            if (spare > 2)
+            {
+                extraBudget = random.Next((spare + 1) / 2, spare + 1);
+            }
+
+            for (int extra = 0; extra < extraBudget; extra++)
+            {
+                int bestIndex = -1;
+                int bestShare = 1;
+                for (int colorIndex = 0; colorIndex < colorOrder.Count; colorIndex++)
+                {
+                    int pixels = pixelCounts[colorOrder[colorIndex]];
+                    int share = (pixels + targets[colorIndex] - 1) / targets[colorIndex];
+                    if (share > bestShare)
+                    {
+                        bestShare = share;
+                        bestIndex = colorIndex;
+                    }
+                }
+
+                if (bestIndex < 0)
+                {
+                    break;
+                }
+
+                targets[bestIndex]++;
+            }
+
+            int peak = 1;
+            for (int colorIndex = 0; colorIndex < colorOrder.Count; colorIndex++)
+            {
+                int pixels = pixelCounts[colorOrder[colorIndex]];
+                int share = (pixels + targets[colorIndex] - 1) / targets[colorIndex];
+                if (share > peak)
+                {
+                    peak = share;
+                }
+            }
+
+            maxShotsPerShooter = peak + Mathf.Max(4, peak / 3);
+
+            int emptyCursor = 0;
+            int wallCursor = 0;
+            for (int colorIndex = 0; colorIndex < colorOrder.Count; colorIndex++)
+            {
+                int colorId = colorOrder[colorIndex];
+                int have = 0;
+                if (shooterCounts.TryGetValue(colorId, out int currentHave))
+                {
+                    have = currentHave;
+                }
+
+                while (have < targets[colorIndex])
+                {
+                    bool reserveReached = emptyCells.Count - emptyCursor <= emptyKeep;
+                    if (reserveReached && have > 0)
+                    {
+                        break;
+                    }
+
+                    CellData cell = null;
+                    if (emptyCursor < emptyCells.Count)
+                    {
+                        cell = CellAt(emptyCells[emptyCursor]);
+                        emptyCursor++;
+                    }
+                    else if (have == 0 && wallCursor < wallCells.Count)
+                    {
+                        cell = CellAt(wallCells[wallCursor]);
+                        wallCursor++;
+                        if (cell != null)
+                        {
+                            cell.ChangeLocked(false);
+                        }
+                    }
+
+                    if (cell == null)
+                    {
+                        break;
+                    }
+
+                    cell.ColorLevel = colorId;
+                    cell.SetQuestionShooter(false);
+                    cell.SetTunnelShooter(false);
+                    cell.SetShotCount(0);
+                    cell.OnColorLevelChanged();
+                    AddCount(shooterCounts, colorId);
+                    have++;
                 }
             }
         }

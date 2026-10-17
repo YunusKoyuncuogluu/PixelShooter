@@ -19,6 +19,14 @@ public class SlotManager : MonoBehaviour
 
     private List<Shooter> shooters;
     private List<Shooter> waitingShooters;
+    private bool halted;
+
+    public bool IsHalted => halted;
+
+    public void Halt()
+    {
+        halted = true;
+    }
 
     public int ShooterCount => shooters != null ? shooters.Count : 0;
     public int OccupantCount => shooters != null ? shooters.Count : 0;
@@ -65,6 +73,9 @@ public class SlotManager : MonoBehaviour
 
     private void Update()
     {
+        if (halted)
+            return;
+
         if (waitingShooters.Count <= 0)
             return;
 

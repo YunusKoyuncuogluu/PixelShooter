@@ -36,6 +36,7 @@ public class ShooterManager : MonoBehaviour
 
         InitializeGridPositioner();
         CreateShooters();
+        ControlClickableShooters();
         RefreshClickableShootersNextFrame().Forget();
     }
 

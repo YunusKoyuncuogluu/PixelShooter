@@ -1,5 +1,4 @@
-using System.Threading;
-using Cysharp.Threading.Tasks;
+using PixelShooter.Pooling;
 using UnityEngine;
 using Zenject;
 using PixelShooter.UI;
@@ -8,32 +7,39 @@ namespace PixelShooter.Game
 {
     public class LevelFlowController : MonoBehaviour
     {
-        [Inject] private LevelManager levelManager;
         [Inject] private SlotManager slotManager;
-        [Inject] private LevelResultUI levelResultUI;
-        [InjectOptional] private ConfettiPlayer confettiPlayer;
+        [Inject] private UIManager uiManager;
+        [Inject] private global::Game.PlayerController playerController;
+        [Inject] private GameAudio gameAudio;
 
         private bool resultShown;
-        private CancellationTokenSource flowCts;
 
         [InjectOptional] private WinFastForward winFastForward;
 
         public bool IsResultShown => resultShown;
+        public event System.Action GameplayStopped;
 
         private void Start()
         {
             resultShown = false;
-            flowCts = new CancellationTokenSource();
 
             if (slotManager != null)
+            {
                 slotManager.OnShooterAreaStuck += OnShooterAreaStuck;
+            }
+
+            if (uiManager != null)
+            {
+                uiManager.ShowGame();
+            }
         }
 
         private void OnDestroy()
         {
-            flowCts?.Cancel();
             if (slotManager != null)
+            {
                 slotManager.OnShooterAreaStuck -= OnShooterAreaStuck;
+            }
         }
 
         public void TriggerWin()
@@ -45,23 +51,16 @@ namespace PixelShooter.Game
                 winFastForward.Stop();
 
             resultShown = true;
-            PlayWinSequenceAsync(flowCts.Token).Forget();
-        }
-
-        private async UniTaskVoid PlayWinSequenceAsync(CancellationToken ct)
-        {
-            if (confettiPlayer != null)
+            if (gameAudio != null)
             {
-                await confettiPlayer.PlayAsync(ct);
-            }
-            else
-            {
-                await UniTask.Delay(500, cancellationToken: ct);
+                gameAudio.PlayLevelWin();
             }
 
-            if (ct.IsCancellationRequested)
-                return;
-            levelResultUI.ShowSuccess(1);
+            StopGameplay(false);
+            if (uiManager != null)
+            {
+                uiManager.ShowCompleted();
+            }
         }
 
         private void OnShooterAreaStuck()
@@ -74,12 +73,42 @@ namespace PixelShooter.Game
             if (resultShown)
                 return;
 
-            if (winFastForward != null)
-                winFastForward.Stop();
-
             resultShown = true;
-            levelManager.FailCurrentLevel();
-            levelResultUI.ShowFail();
+            if (winFastForward != null)
+            {
+                winFastForward.Stop();
+            }
+
+            if (gameAudio != null)
+            {
+                gameAudio.PlayLevelFail();
+            }
+
+            StopGameplay(true);
+            if (uiManager != null)
+            {
+                uiManager.ShowFail();
+            }
+        }
+
+        private void StopGameplay(bool freezeTime)
+        {
+            if (playerController != null)
+            {
+                playerController.SetActive(false);
+            }
+
+            if (slotManager != null)
+            {
+                slotManager.Halt();
+            }
+
+            if (freezeTime)
+            {
+                Time.timeScale = 0f;
+            }
+
+            GameplayStopped?.Invoke();
         }
     }
 }

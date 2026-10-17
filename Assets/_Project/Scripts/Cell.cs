@@ -18,6 +18,14 @@ public class Cell : MonoBehaviour
     private bool m_IsFull;
     public bool IsFull => m_IsFull;
 
+    private bool tunnelReserved;
+    public bool BlocksPath => m_IsFull || m_IsLocked || tunnelReserved;
+
+    public void SetTunnelReserved(bool reserved)
+    {
+        tunnelReserved = reserved;
+    }
+
     private Transform cachedTransform;
 
     public void Construct(Vector3 localPosition, Vector2Int coordinate, Transform parent, bool isLocked)

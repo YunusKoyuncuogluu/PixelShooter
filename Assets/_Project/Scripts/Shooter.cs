@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
+using PixelShooter.Pooling;
 using UnityEngine;
 using UnityEngine.Serialization;
 using Zenject;
@@ -14,15 +15,15 @@ public class Shooter : MonoBehaviour
     [Inject] private ShooterManager shooterManager;
     [Inject] private SlotManager slotManager;
     [Inject] private TunnelManager tunnelManager;
-    [Inject] private AudioPool audioPool;
+    [Inject] private GameAudio audioPool;
+    [Inject] private ObjectPool objectPool;
     [InjectOptional] private PixelShooter.Game.IFastForwardGate fastForwardGate;
 
     [FormerlySerializedAs("m_Renderer")]
     [SerializeField] private Renderer rendererComponent;
+    [SerializeField] private Renderer extraRenderer;
     [FormerlySerializedAs("m_QuestionMaterial")]
     [SerializeField] private Material questionMaterial;
-    [FormerlySerializedAs("m_QuestionDarkMaterial")]
-    [SerializeField] private Material questionDarkMaterial;
     [FormerlySerializedAs("m_QuestionMark")]
     [SerializeField] private GameObject questionMark;
 
@@ -52,8 +53,7 @@ public class Shooter : MonoBehaviour
     public GeneralColor Color => color;
 
     private ShooterData shooterData;
-    private Material[] shooterMaterials;
-    private Material[] questionMaterials;
+    private Material shooterMaterial;
     private Transform cachedTransform;
     private MaterialPropertyBlock propertyBlock;
     private Color shooterColor;
@@ -66,12 +66,24 @@ public class Shooter : MonoBehaviour
     public bool IsWaitingInSlot => isWaitingInSlot;
 
     private bool continueWhenSeated;
+    private bool presentedLocked;
+    private bool unlockHandled;
+    private bool homePoseCached;
+    private Vector3 homeLocalScale;
+    private Vector3 homePosition;
+    private Sequence revealSequence;
+
+    private const float LockedScaleFactor = 0.78f;
+    private const float UnlockLift = 0.55f;
+    private const float UnlockRiseDuration = 0.34f;
+    private const float UnlockSettleDuration = 0.4f;
 
     public void Construct(ShooterData data)
     {
         cachedTransform = transform;
         shooterData = data;
         cachedTransform.position = shooterData.Position;
+        CacheHomePose();
         coordinate = shooterData.Coordinate;
         color = data.Color;
         isQuestionShooter = data.IsQuestionShooter;
@@ -92,9 +104,8 @@ public class Shooter : MonoBehaviour
     {
         List<FacadeProperty> facadeProperties = projectSettings.GetOriginalFacadeProperties();
         Material[] originalMaterials = facadeProperties[(int)shooterData.Color - 1].ShooterMaterials;
-        shooterMaterials = originalMaterials;
+        shooterMaterial = originalMaterials != null && originalMaterials.Length > 0 ? originalMaterials[0] : null;
         shooterColor = facadeProperties[(int)shooterData.Color - 1].Color;
-        questionMaterials = new[] { questionMaterial, questionDarkMaterial };
         SetMaterial(isQuestionShooter);
     }
 
@@ -102,12 +113,24 @@ public class Shooter : MonoBehaviour
     {
         shooterColor = swatch;
         if (!isQuestionShooter)
+        {
             ApplyPropertyBlock(isClickable ? 1f : 0f);
+        }
     }
 
     public void SetMaterial(bool isQuestion)
     {
-        rendererComponent.sharedMaterials = isQuestion ? questionMaterials : shooterMaterials;
+        Material material = isQuestion ? questionMaterial : shooterMaterial;
+        if (rendererComponent != null)
+        {
+            rendererComponent.sharedMaterial = material;
+        }
+
+        if (extraRenderer != null)
+        {
+            extraRenderer.sharedMaterial = material;
+        }
+
         ApplyPropertyBlock(isQuestion ? 0f : (isClickable ? 1f : 0f));
     }
 
@@ -117,28 +140,38 @@ public class Shooter : MonoBehaviour
 
     public void SetCoordinate(Vector2Int value) => coordinate = value;
 
-    public void SetOutline(bool open) => ApplyPropertyBlock(open ? 1f : 0f);
+    public void SetOutline(bool open)
+    {
+        ApplyPropertyBlock(open ? 1f : 0f);
+    }
 
     public void ClickableProcess()
     {
-        SetOutline(IsClickable);
         if (!isClickable)
-            return;
-
-        if (isQuestionShooter)
         {
-            isQuestionShooter = false;
-            questionMark.gameObject.SetActive(false);
-            SetMaterial(false);
-            ShooterController shooterController = GetComponent<ShooterController>();
-            if (shooterController != null)
-                shooterController.SetCountTextVisible(true);
+            if (unlockHandled)
+                Relock();
+            else if (!presentedLocked)
+                ApplyLockedLook();
+            return;
         }
+
+        if (unlockHandled)
+        {
+            SetOutline(true);
+            return;
+        }
+
+        unlockHandled = true;
+        if (presentedLocked)
+            PlayUnlockAnimation();
+        else
+            ApplyOpenLook();
     }
 
     public void OnClick()
     {
-        if (isBusy || !isClickable)
+        if (isBusy || !isClickable || slotManager.IsHalted)
             return;
 
         if (audioPool != null)
@@ -155,11 +188,14 @@ public class Shooter : MonoBehaviour
 
     public void SendFromGrid()
     {
-        if (isBusy || !isClickable || isWaitingInSlot)
+        if (isBusy || !isClickable || isWaitingInSlot || slotManager.IsHalted)
             return;
 
         isClickable = false;
         isBusy = true;
+        revealSequence?.Kill();
+        if (homePoseCached && cachedTransform != null)
+            cachedTransform.localScale = homeLocalScale;
         shooterManager.RemoveShooter(coordinate);
         slotManager.SaveShooter(this);
     }
@@ -189,7 +225,7 @@ public class Shooter : MonoBehaviour
 
     public void ContinueFromSlot()
     {
-        if (mySlot == null)
+        if (mySlot == null || slotManager.IsHalted)
             return;
 
         isWaitingInSlot = false;
@@ -210,13 +246,14 @@ public class Shooter : MonoBehaviour
         if (cachedTransform == null)
             cachedTransform = transform;
 
-        SplineExtensions.ClearExistingFollowers(gameObject);
+        SplineExtensions.ClearExistingFollowers(gameObject, objectPool);
 
         Vector3 slotPos = slot.transform.position;
         Quaternion startRotation = cachedTransform.rotation;
         Quaternion slotRotation = Quaternion.identity;
 
         gameObject.FollowTo(
+            objectPool,
             slot.transform,
             SlotTravelSpeed,
             onComplete: () =>
@@ -257,7 +294,7 @@ public class Shooter : MonoBehaviour
         mySlot = slot;
         isBusy = true;
 
-        SplineExtensions.ClearExistingFollowers(gameObject);
+        SplineExtensions.ClearExistingFollowers(gameObject, objectPool);
 
         if (cachedTransform == null)
             cachedTransform = transform;
@@ -267,6 +304,7 @@ public class Shooter : MonoBehaviour
         Quaternion slotRotation = Quaternion.identity;
 
         transform.gameObject.FollowTo(
+            objectPool,
             mySlot.transform,
             SlotTravelSpeed,
             onComplete: () =>
@@ -319,7 +357,7 @@ public class Shooter : MonoBehaviour
     {
         mySlot = slot;
         isBusy = false;
-        SplineExtensions.ClearExistingFollowers(gameObject);
+        SplineExtensions.ClearExistingFollowers(gameObject, objectPool);
 
         if (slot != null)
         {
@@ -336,10 +374,118 @@ public class Shooter : MonoBehaviour
         isBusy = false;
     }
 
-    private void ApplyPropertyBlock(float outlineWidth)
+    private void OnDestroy()
     {
-        if (propertyBlock == null || rendererComponent == null)
+        revealSequence?.Kill();
+        scaleSequence?.Kill();
+    }
+
+    private void CacheHomePose()
+    {
+        if (homePoseCached || cachedTransform == null)
             return;
+
+        homeLocalScale = cachedTransform.localScale;
+        homePosition = cachedTransform.position;
+        homePoseCached = true;
+    }
+
+    private void Relock()
+    {
+        unlockHandled = false;
+        revealSequence?.Kill();
+        revealSequence = null;
+        ApplyLockedLook();
+        if (cachedTransform != null && homePoseCached)
+            cachedTransform.position = homePosition;
+    }
+
+    private void ApplyLockedLook()
+    {
+        presentedLocked = true;
+        SetOutline(false);
+        ShooterController controller = GetComponent<ShooterController>();
+        if (controller != null)
+            controller.SetCountTextVisible(false);
+
+        if (cachedTransform == null || !homePoseCached)
+            return;
+
+        cachedTransform.localScale = homeLocalScale * LockedScaleFactor;
+    }
+
+    private void ApplyOpenLook()
+    {
+        RestoreHomePose();
+        RevealQuestionIfNeeded();
+        SetOutline(true);
+        ShooterController controller = GetComponent<ShooterController>();
+        if (controller != null)
+            controller.SetCountTextVisible(true);
+    }
+
+    private void PlayUnlockAnimation()
+    {
+        RevealQuestionIfNeeded();
+        SetOutline(true);
+        ShooterController controller = GetComponent<ShooterController>();
+        if (controller != null)
+            controller.SetCountTextVisible(true);
+
+        if (cachedTransform == null || !homePoseCached)
+        {
+            RestoreHomePose();
+            return;
+        }
+
+        revealSequence?.Kill();
+        cachedTransform.position = homePosition;
+        cachedTransform.localScale = homeLocalScale * LockedScaleFactor;
+
+        Vector3 lifted = homePosition + Vector3.up * UnlockLift;
+        Vector3 peakScale = homeLocalScale * 1.2f;
+        revealSequence = DOTween.Sequence();
+        revealSequence.SetTarget(cachedTransform);
+        revealSequence.SetRecyclable(true);
+        revealSequence.Append(cachedTransform.DOMove(lifted, UnlockRiseDuration).SetEase(Ease.OutCubic));
+        revealSequence.Join(cachedTransform.DOScale(peakScale, UnlockRiseDuration).SetEase(Ease.OutCubic));
+        revealSequence.AppendInterval(0.08f);
+        revealSequence.Append(cachedTransform.DOMove(homePosition, UnlockSettleDuration).SetEase(Ease.InOutSine));
+        revealSequence.Join(cachedTransform.DOScale(homeLocalScale, UnlockSettleDuration).SetEase(Ease.InOutSine));
+        revealSequence.OnComplete(() =>
+        {
+            if (!isClickable)
+                return;
+
+            RestoreHomePose();
+        });
+    }
+
+    private void RestoreHomePose()
+    {
+        if (cachedTransform == null || !homePoseCached)
+            return;
+
+        cachedTransform.position = homePosition;
+        cachedTransform.localScale = homeLocalScale;
+    }
+
+    private void RevealQuestionIfNeeded()
+    {
+        if (!isQuestionShooter)
+            return;
+
+        isQuestionShooter = false;
+        questionMark.gameObject.SetActive(false);
+        SetMaterial(false);
+    }
+
+    private void ApplyPropertyBlock(float width)
+    {
+        if (propertyBlock == null)
+        {
+            return;
+        }
 
         propertyBlock.Clear();
         if (!isQuestionShooter)
@@ -348,8 +494,16 @@ public class Shooter : MonoBehaviour
             propertyBlock.SetColor(HighlightColorId, UnityEngine.Color.white);
         }
 
-        propertyBlock.SetFloat(OutlineWidthId, outlineWidth);
-        rendererComponent.SetPropertyBlock(propertyBlock);
+        propertyBlock.SetFloat(OutlineWidthId, width);
+        if (rendererComponent != null)
+        {
+            rendererComponent.SetPropertyBlock(propertyBlock);
+        }
+
+        if (extraRenderer != null)
+        {
+            extraRenderer.SetPropertyBlock(propertyBlock);
+        }
     }
 
     public class Factory : PlaceholderFactory<Shooter>

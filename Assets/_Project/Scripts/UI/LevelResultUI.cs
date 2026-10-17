@@ -83,6 +83,7 @@ namespace PixelShooter.UI
 
         private void OnNextLevel()
         {
+            Time.timeScale = 1f;
             levelManager.CompleteCurrentLevel();
             HideAll();
             sceneChanger.LoadGame();
@@ -90,12 +91,14 @@ namespace PixelShooter.UI
 
         private void OnRetry()
         {
+            Time.timeScale = 1f;
             HideAll();
             sceneChanger.LoadGame();
         }
 
         private void OnHome()
         {
+            Time.timeScale = 1f;
             HideAll();
             sceneChanger.LoadMainMenu();
         }

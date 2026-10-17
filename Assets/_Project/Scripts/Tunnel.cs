@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Grids;
+using PixelShooter.Pooling;
 using UnityEngine;
 using UnityEngine.Serialization;
 using Zenject;
@@ -10,6 +11,7 @@ public class Tunnel : MonoBehaviour
     [Inject] private CellManager cellManager;
     [Inject] private TunnelManager tunnelManager;
     [Inject] private SlotManager slotManager;
+    [Inject] private ObjectPool objectPool;
 
     [FormerlySerializedAs("m_TunnelVisual")]
     [SerializeField] private TunnelVisual tunnelVisual;
@@ -46,12 +48,17 @@ public class Tunnel : MonoBehaviour
 
         if (cellManager.IsInside(exitCoordinate) && !cellManager.IsFull(exitCoordinate))
             CreateNewShooter();
+        else
+            RefreshExitReservation();
     }
 
     public void CreateNewShooter()
     {
         if (shooterData.Count == 0)
+        {
+            RefreshExitReservation();
             return;
+        }
 
         if (shooterData.Count >= 1)
         {
@@ -63,11 +70,21 @@ public class Tunnel : MonoBehaviour
             UpdateTunnelVisual();
         }
 
+        RefreshExitReservation();
+
         if (shooterData.Count == 0)
         {
             tunnelVisual.SetCount(0);
             tunnelManager.RemoveTunnel(coordinate);
         }
+    }
+
+    private void RefreshExitReservation()
+    {
+        if (!cellManager.IsInside(exitCoordinate))
+            return;
+
+        cellManager.SetTunnelReserved(exitCoordinate, shooterData != null && shooterData.Count > 0);
     }
 
     private bool IsOpenBoardExit()
@@ -105,6 +122,7 @@ public class Tunnel : MonoBehaviour
         shooter.SetCoordinate(exitCoordinate);
 
         shooter.transform.gameObject.FollowTo(
+            objectPool,
             targetPosition,
             shooter.SlotTravelSpeed,
             onComplete: () => { shooterManager.ControlClickableShooters(); },

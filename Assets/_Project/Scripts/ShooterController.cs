@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
+using PixelShooter.Pooling;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -9,8 +10,8 @@ using Zenject;
 public class ShooterController : MonoBehaviour
 {
     [Inject] private ImageManager imageManager;
-    [Inject] private ProjectilePool projectilePool;
-    [Inject] private AudioPool audioPool;
+    [Inject] private ObjectPool objectPool;
+    [Inject] private GameAudio audioPool;
     [InjectOptional] private ConveyorManager conveyorManager;
     [InjectOptional] private PlateQueueManager plateQueueManager;
     [Inject] private SlotManager slotManager;
@@ -36,6 +37,8 @@ public class ShooterController : MonoBehaviour
     private Transform seatAnchor;
     private int firedSide = -1;
     private int firedLane = int.MinValue;
+    private Vector3 lastAimPosition;
+    private bool hasLastAimPosition;
     private Quaternion countTextLocalRotation = Quaternion.identity;
     private bool countTextLocalCached;
     private int ammoAtLapStart;
@@ -165,6 +168,9 @@ public class ShooterController : MonoBehaviour
 
     private bool CanDepart()
     {
+        if (conveyorManager != null && conveyorManager.IsHalted)
+            return false;
+
         return !isRunRoutine && !isOnConveyor && !isAwaitingDeparture
             && imageManager != null && conveyorManager != null;
     }
@@ -204,10 +210,21 @@ public class ShooterController : MonoBehaviour
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    if (conveyorManager != null && conveyorManager.IsHalted)
+                        return;
+
                     while (!plateQueueManager.HasAvailablePlate && !cancellationToken.IsCancellationRequested)
+                    {
+                        if (conveyorManager != null && conveyorManager.IsHalted)
+                            return;
+
                         await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+                    }
 
                     if (cancellationToken.IsCancellationRequested || this == null)
+                        return;
+
+                    if (conveyorManager != null && conveyorManager.IsHalted)
                         return;
 
                     bool boarded = await plateQueueManager.TryBoardShooterAsync(this, cancellationToken);
@@ -218,7 +235,7 @@ public class ShooterController : MonoBehaviour
                 }
             }
 
-            if (this == null || conveyorManager == null || cancellationToken.IsCancellationRequested)
+            if (this == null || conveyorManager == null || conveyorManager.IsHalted || cancellationToken.IsCancellationRequested)
                 return;
 
             if (shooter != null)
@@ -251,6 +268,15 @@ public class ShooterController : MonoBehaviour
         cachedFollower = null;
     }
 
+    public void StopTravel()
+    {
+        runCompleted = true;
+        if (cachedFollower != null)
+            cachedFollower.follow = false;
+
+        travelCts?.Cancel();
+    }
+
     public void ReleaseOriginSlot()
     {
         isOnConveyor = true;
@@ -275,6 +301,8 @@ public class ShooterController : MonoBehaviour
         firedSide = -1;
         firedLane = int.MinValue;
         FaceCenter(true);
+        lastAimPosition = transform.position;
+        hasLastAimPosition = true;
 
         SplineFollower follower = cachedFollower;
         if (follower == null)
@@ -342,11 +370,59 @@ public class ShooterController : MonoBehaviour
 
     private void TryFire(int capacity, CancellationToken cancellationToken)
     {
-        if (runCompleted || currentFill + inFlightShots >= capacity)
+        if (runCompleted || (conveyorManager != null && conveyorManager.IsHalted))
+            return;
+
+        Vector3 current = transform.position;
+        if (!hasLastAimPosition)
+        {
+            hasLastAimPosition = true;
+            lastAimPosition = current;
+            TryFireAt(current, capacity, cancellationToken);
+            return;
+        }
+
+        Vector3 from = lastAimPosition;
+        lastAimPosition = current;
+        float dx = current.x - from.x;
+        float dz = current.z - from.z;
+        float distance = Mathf.Sqrt(dx * dx + dz * dz);
+        float step = imageManager != null ? imageManager.ClaimSampleDistance : 0.12f;
+        if (step < 0.05f)
+            step = 0.05f;
+
+        const int maxSamples = 16;
+        if (distance > step * maxSamples)
+        {
+            TryFireAt(current, capacity, cancellationToken);
+            return;
+        }
+
+        int samples = Mathf.CeilToInt(distance / step);
+        if (samples < 1)
+            samples = 1;
+
+        float inverse = 1f / samples;
+        for (int i = 1; i <= samples; i++)
+        {
+            if (runCompleted || (conveyorManager != null && conveyorManager.IsHalted))
+                return;
+
+            if (currentFill + inFlightShots >= capacity)
+                return;
+
+            float t = i * inverse;
+            TryFireAt(new Vector3(from.x + dx * t, current.y, from.z + dz * t), capacity, cancellationToken);
+        }
+    }
+
+    private void TryFireAt(Vector3 aimPosition, int capacity, CancellationToken cancellationToken)
+    {
+        if (currentFill + inFlightShots >= capacity)
             return;
 
         if (!imageManager.TryClaimFrontPixel(
-                transform.position,
+                aimPosition,
                 shooterPaletteId,
                 firedSide,
                 firedLane,
@@ -356,7 +432,10 @@ public class ShooterController : MonoBehaviour
                 out Vector3 pixelWorldPos))
             return;
 
-        Projectile projectile = projectilePool != null ? projectilePool.Rent() : null;
+        GameObject projectileObject = objectPool != null
+            ? objectPool.SpawnFromPool(PoolTags.Bullet, Vector3.zero, Quaternion.identity)
+            : null;
+        Projectile projectile = projectileObject != null ? projectileObject.GetComponent<Projectile>() : null;
         if (projectile == null)
         {
             imageManager.ReleaseReservation(gridPosition);
@@ -475,8 +554,10 @@ public class ShooterController : MonoBehaviour
 
             RefreshCountText();
 
-            if (projectilePool != null)
-                projectilePool.Return(projectile);
+            if (objectPool != null && projectile != null)
+            {
+                objectPool.DestroyToPool(PoolTags.Bullet, projectile.gameObject);
+            }
         }
     }
 

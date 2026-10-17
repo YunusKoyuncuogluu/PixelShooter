@@ -3,7 +3,9 @@ guid: 70b03307b5f11ae46a0f945de1d2744a
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - cellLabelFont: {fileID: 12800000, guid: 306d6e87407044c6abaeaccb1c439f70, type: 3}
+  - pixelBakeSource: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

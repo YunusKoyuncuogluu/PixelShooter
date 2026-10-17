@@ -1,5 +1,7 @@
+using PixelShooter.Pooling;
 using PixelShooter.UI;
 using PixelShooter.Game;
+using UnityEngine.Audio;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -54,23 +56,24 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     [SerializeField]
     [FoldoutGroup("UI")]
-    [FormerlySerializedAs("m_LevelResultUI")]
-    private LevelResultUI levelResultUI;
+    private GameObject gamePagePrefab;
 
     [SerializeField]
     [FoldoutGroup("UI")]
-    [FormerlySerializedAs("m_GameHUD")]
-    private GameHUD gameHUD;
+    private GameObject failPagePrefab;
+
+    [SerializeField]
+    [FoldoutGroup("UI")]
+    private GameObject completedPagePrefab;
+
+    [SerializeField]
+    [FoldoutGroup("UI")]
+    private GameObject settingPopupPrefab;
 
     [SerializeField]
     [FoldoutGroup("UI")]
     [FormerlySerializedAs("m_LevelFlowController")]
     private LevelFlowController levelFlowController;
-
-    [SerializeField]
-    [FoldoutGroup("UI")]
-    [FormerlySerializedAs("m_ConfettiPlayer")]
-    private ConfettiPlayer confettiPlayer;
 
     [SerializeField]
     [FoldoutGroup("Prefabs")]
@@ -99,8 +102,7 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
 
     [SerializeField]
     [FoldoutGroup("Prefabs")]
-    [FormerlySerializedAs("m_BulletPrefab")]
-    private Projectile bulletPrefab;
+    private ObjectPool objectPoolPrefab;
 
     [SerializeField]
     [FoldoutGroup("Audio")]
@@ -111,6 +113,18 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
     [FoldoutGroup("Audio")]
     [FormerlySerializedAs("m_BulletFireClip")]
     private AudioClip bulletFireClip;
+
+    [SerializeField]
+    [FoldoutGroup("Audio")]
+    private AudioClip levelWinClip;
+
+    [SerializeField]
+    [FoldoutGroup("Audio")]
+    private AudioClip levelFailClip;
+
+    [SerializeField]
+    [FoldoutGroup("Audio")]
+    private AudioMixerGroup sfxGroup;
 
     public override void InstallBindings()
     {
@@ -123,11 +137,19 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindInterfacesAndSelfTo<RuntimeLevel>().AsSingle();
         Container.Bind<ImageManager>().AsSingle();
         Container.BindInstance(shooterManager).AsSingle();
-        Container.Bind<ProjectilePool>().FromNewComponentOnNewGameObject().AsSingle()
-            .OnInstantiated<ProjectilePool>((context, pool) => pool.Initialize(bulletPrefab))
+        if (objectPoolPrefab != null)
+        {
+            Container.Bind<ObjectPool>().FromComponentInNewPrefab(objectPoolPrefab).AsSingle().NonLazy();
+        }
+        Container.Bind<GameAudio>().FromNewComponentOnNewGameObject().AsSingle()
+            .OnInstantiated<GameAudio>((context, audio) =>
+            {
+                audio.AssignOutput(sfxGroup);
+                audio.AssignClips(shooterSelectClip, bulletFireClip, levelWinClip, levelFailClip);
+            })
             .NonLazy();
-        Container.Bind<AudioPool>().FromNewComponentOnNewGameObject().AsSingle()
-            .OnInstantiated<AudioPool>((context, pool) => pool.AssignClips(shooterSelectClip, bulletFireClip))
+        Container.Bind<UIManager>().FromNewComponentOnNewGameObject().AsSingle()
+            .OnInstantiated<UIManager>((context, ui) => ui.Configure(gamePagePrefab, failPagePrefab, completedPagePrefab, settingPopupPrefab))
             .NonLazy();
         Container.BindInstance(cellManager).AsSingle();
         Container.BindInstance(slotManager).AsSingle();
@@ -143,17 +165,8 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         if (plateQueueManager != null)
             Container.BindInstance(plateQueueManager).AsSingle();
 
-        if (levelResultUI != null)
-            Container.BindInstance(levelResultUI).AsSingle();
-
-        if (gameHUD != null)
-            Container.BindInstance(gameHUD).AsSingle();
-
         if (levelFlowController != null)
             Container.BindInstance(levelFlowController).AsSingle();
-
-        if (confettiPlayer != null)
-            Container.BindInstance(confettiPlayer).AsSingle();
 
         if (imageGridRenderer != null)
             Container.BindInterfacesAndSelfTo<ImageGridRenderer>().FromInstance(imageGridRenderer).AsSingle();

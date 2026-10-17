@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
+using PixelShooter.Pooling;
 using UnityEngine;
 
 public static class SplineExtensions
@@ -9,6 +10,7 @@ public static class SplineExtensions
 
     public static SplineFollower FollowTo(
         this GameObject obj,
+        ObjectPool pool,
         Transform target,
         float speed,
         Action onComplete = null,
@@ -17,23 +19,25 @@ public static class SplineExtensions
     {
         Vector3 end = target.position;
         Vector3 mid = (obj.transform.position + end) * 0.5f + new Vector3(0f, UnityEngine.Random.Range(4.5f, 7.5f), 0f);
-        return FollowToInternal(obj, end, mid, speed, onComplete, onUpdate, splineType);
+        return FollowToInternal(obj, pool, end, mid, speed, onComplete, onUpdate, splineType);
     }
 
     public static SplineFollower FollowTo(
         this GameObject obj,
+        ObjectPool pool,
         Vector3 targetPos,
         float speed,
         Action onComplete = null,
         Action<float> onUpdate = null,
         Spline.Type splineType = Spline.Type.BSpline)
     {
-        Vector3 mid = (obj.transform.position + targetPos) * 0.5f + new Vector3(0f, 0.5f, 0f);
-        return FollowToInternal(obj, targetPos, mid, speed, onComplete, onUpdate, splineType);
+        Vector3 mid = (obj.transform.position + targetPos) * 0.5f + new Vector3(0f, UnityEngine.Random.Range(4.5f, 7.5f), 0f);
+        return FollowToInternal(obj, pool, targetPos, mid, speed, onComplete, onUpdate, splineType);
     }
 
     public static async UniTask FollowToAsync(
         this GameObject obj,
+        ObjectPool pool,
         Vector3 targetPos,
         float speed,
         float arcHeight,
@@ -42,7 +46,9 @@ public static class SplineExtensions
         Spline.Type splineType = Spline.Type.BSpline)
     {
         if (obj == null)
+        {
             return;
+        }
 
         Vector3 start = obj.transform.position;
         float height = Mathf.Max(0f, arcHeight);
@@ -51,6 +57,7 @@ public static class SplineExtensions
         UniTaskCompletionSource completion = new UniTaskCompletionSource();
         FollowToInternal(
             obj,
+            pool,
             targetPos,
             mid,
             speed,
@@ -61,13 +68,15 @@ public static class SplineExtensions
         bool released = false;
         CancellationTokenRegistration registration = default;
 
-        void Release(bool destroyImmediate)
+        void Release(ObjectPool splinePool, bool destroyImmediate)
         {
             if (released || obj == null)
+            {
                 return;
+            }
 
             released = true;
-            ClearExistingFollowers(obj, destroyImmediate);
+            ClearExistingFollowers(obj, splinePool, destroyImmediate);
         }
 
         try
@@ -76,7 +85,7 @@ public static class SplineExtensions
             {
                 registration = cancellationToken.Register(() =>
                 {
-                    Release(false);
+                    Release(pool, false);
                     completion.TrySetCanceled();
                 });
             }
@@ -85,7 +94,7 @@ public static class SplineExtensions
         }
         catch (OperationCanceledException)
         {
-            Release(false);
+            Release(pool, false);
             throw;
         }
         finally
@@ -93,7 +102,7 @@ public static class SplineExtensions
             registration.Dispose();
             if (obj != null && !cancellationToken.IsCancellationRequested)
             {
-                Release(true);
+                Release(pool, true);
                 obj.transform.position = targetPos;
             }
         }
@@ -101,6 +110,7 @@ public static class SplineExtensions
 
     private static SplineFollower FollowToInternal(
         GameObject obj,
+        ObjectPool pool,
         Vector3 end,
         Vector3 mid,
         float speed,
@@ -109,10 +119,29 @@ public static class SplineExtensions
         Spline.Type splineType)
     {
         float resolvedSpeed = Mathf.Max(0.01f, speed);
-        ClearExistingFollowers(obj);
+        ClearExistingFollowers(obj, pool);
 
-        GameObject splineObject = new GameObject("DynamicSpline_" + obj.name);
-        SplineComputer splineComputer = splineObject.AddComponent<SplineComputer>();
+        if (pool == null)
+        {
+            onComplete?.Invoke();
+            return null;
+        }
+
+        GameObject splineObject = pool.SpawnFromPool(PoolTags.TravelSpline, Vector3.zero, Quaternion.identity);
+        if (splineObject == null)
+        {
+            onComplete?.Invoke();
+            return null;
+        }
+
+        SplineComputer splineComputer = splineObject.GetComponent<SplineComputer>();
+        if (splineComputer == null)
+        {
+            pool.DestroyToPool(PoolTags.TravelSpline, splineObject);
+            onComplete?.Invoke();
+            return null;
+        }
+
         splineComputer.type = splineType;
 
         Vector3 start = obj.transform.position;
@@ -121,6 +150,7 @@ public static class SplineExtensions
         points[1] = new SplinePoint(mid);
         points[2] = new SplinePoint(end);
         splineComputer.SetPoints(points);
+        splineComputer.RebuildImmediate(true, true);
 
         SplineFollower follower = obj.AddComponent<SplineFollower>();
         follower.follow = false;
@@ -143,9 +173,13 @@ public static class SplineExtensions
 
             DestroyOwned(follower, true);
             if (boundSpline != null)
-                DestroyOwned(boundSpline.gameObject, true);
+            {
+                ReleaseSpline(boundSpline.gameObject, pool);
+            }
             else
-                DestroyOwned(splineObject, true);
+            {
+                ReleaseSpline(splineObject, pool);
+            }
 
             if (obj != null)
                 obj.transform.position = end;
@@ -165,22 +199,26 @@ public static class SplineExtensions
         return follower;
     }
 
-    public static void ClearExistingFollowers(GameObject obj)
+    public static void ClearExistingFollowers(GameObject obj, ObjectPool pool)
     {
-        ClearExistingFollowers(obj, true);
+        ClearExistingFollowers(obj, pool, true);
     }
 
-    public static void ClearExistingFollowers(GameObject obj, bool destroyImmediate)
+    public static void ClearExistingFollowers(GameObject obj, ObjectPool pool, bool destroyImmediate)
     {
         if (obj == null)
+        {
             return;
+        }
 
         SplineFollower[] existing = obj.GetComponents<SplineFollower>();
         for (int i = 0; i < existing.Length; i++)
         {
             SplineFollower follower = existing[i];
             if (follower == null)
+            {
                 continue;
+            }
 
             follower.follow = false;
             if (follower.spline != null)
@@ -188,13 +226,31 @@ public static class SplineExtensions
                 SplineComputer spline = follower.spline;
                 follower.spline = null;
                 if (spline != null && spline.gameObject != null && spline.gameObject.name.StartsWith("DynamicSpline_"))
-                    DestroyOwned(spline.gameObject, destroyImmediate);
+                {
+                    ReleaseSpline(spline.gameObject, pool);
+                }
             }
 
             DestroyOwned(follower, destroyImmediate);
         }
 
         ClearShooterFollowerCache(obj);
+    }
+
+    private static void ReleaseSpline(GameObject splineObject, ObjectPool pool)
+    {
+        if (splineObject == null)
+        {
+            return;
+        }
+
+        if (pool != null)
+        {
+            pool.DestroyToPool(PoolTags.TravelSpline, splineObject);
+            return;
+        }
+
+        DestroyOwned(splineObject, true);
     }
 
     private static void DestroyOwned(UnityEngine.Object target, bool destroyImmediate)

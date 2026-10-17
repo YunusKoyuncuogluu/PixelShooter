@@ -49,11 +49,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rendererComponent: {fileID: 7617561725827380446}
+  extraRenderer: {fileID: 7110346653689394397}
   questionMaterial: {fileID: 2100000, guid: b113fe85ed7fbb04bbd089569d3afe5a, type: 2}
-  questionDarkMaterial: {fileID: 2100000, guid: 6cf20a4af21393840bee91a6a0d7198b, type: 2}
   questionMark: {fileID: 7873761482736223079}
-  slotTravelSpeed: 25
-  plateTravelSpeed: 25
+  slotTravelSpeed: 35
+  plateTravelSpeed: 35
   conveyorSpeed: 7
 --- !u!114 &7569707946790346603
 MonoBehaviour:
@@ -310,8 +310,8 @@ Transform:
   m_GameObject: {fileID: 7096334549454003641}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.0622, z: 0.667}
-  m_LocalScale: {x: 0.2748, y: 0.21657151, z: 0.6313}
+  m_LocalPosition: {x: 0, y: 0.311, z: 0.668}
+  m_LocalScale: {x: 0.2748, y: 0.21657151, z: 0.5533882}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3804807811031683404}
@@ -644,7 +644,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 4af4504aa82203249bf50b9c642e1302, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

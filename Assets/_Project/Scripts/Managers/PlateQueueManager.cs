@@ -3,6 +3,8 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
 using LevelManagement;
+using PixelShooter.Pooling;
+using TMPro;
 using UnityEngine;
 using Zenject;
 
@@ -11,19 +13,43 @@ public class PlateQueueManager : MonoBehaviour
     private const int DefaultPlateCount = 5;
 
     [Inject] private Plate.Factory plateFactory;
+    [Inject] private ObjectPool objectPool;
+
+    private Transform platesRoot;
 
     [Header("References (drag & drop)")]
     [SerializeField] private Transform queueOrigin;
     [SerializeField] private Transform boardingAnchor;
     [SerializeField] private SplineComputer conveyorSpline;
+    [SerializeField] private TMP_Text plateCountText;
 
     private readonly List<Plate> queuedPlates = new List<Plate>(16);
     private readonly List<Plate> activePlates = new List<Plate>(8);
     private readonly Dictionary<ShooterController, Plate> boundByShooter = new Dictionary<ShooterController, Plate>(8);
     private readonly List<UniTask> slideTasksBuffer = new List<UniTask>(16);
 
+    private readonly char[] plateCountBuffer = new char[24];
+
     private CancellationTokenSource lifeCts;
     private bool isBoardingBusy;
+    private int maxPlateCount;
+
+    private void Awake()
+    {
+        EnsurePlatesRoot();
+    }
+
+    private void EnsurePlatesRoot()
+    {
+        if (platesRoot != null)
+        {
+            return;
+        }
+
+        GameObject rootObject = new GameObject("Plates");
+        platesRoot = rootObject.transform;
+        platesRoot.SetParent(transform, false);
+    }
 
     public bool HasAvailablePlate => queuedPlates.Count > 0 && !isBoardingBusy;
 
@@ -80,6 +106,7 @@ public class PlateQueueManager : MonoBehaviour
         {
             Plate plate = queuedPlates[0];
             queuedPlates.RemoveAt(0);
+            RefreshPlateCountText();
 
             GetConveyorStartPose(plate, out Vector3 flatPos, out Quaternion flatRot);
             Vector3 seatWorld = plate.PredictSeatWorldPosition(flatPos, flatRot);
@@ -90,6 +117,7 @@ public class PlateQueueManager : MonoBehaviour
             UniTask deployTask = plate.AnimateDeployFlatAsync(flatPos, flatRot, linked);
             UniTask slideTask = SlideQueueForwardAsync(linked);
             UniTask travelTask = shooterController.gameObject.FollowToAsync(
+                objectPool,
                 seatWorld,
                 travelSpeed,
                 travelArc,
@@ -104,7 +132,7 @@ public class PlateQueueManager : MonoBehaviour
                 return false;
             }
 
-            SplineExtensions.ClearExistingFollowers(shooterController.gameObject);
+            SplineExtensions.ClearExistingFollowers(shooterController.gameObject, objectPool);
 
             plate.transform.position = flatPos;
             plate.transform.rotation = flatRot;
@@ -209,7 +237,10 @@ public class PlateQueueManager : MonoBehaviour
             return;
 
         if (!queuedPlates.Contains(plate))
+        {
             queuedPlates.Add(plate);
+            RefreshPlateCountText();
+        }
 
         GetQueuePose(queuedPlates.Count - 1, plate, out Vector3 pos, out Quaternion rot);
         plate.FlyToQueue(pos, rot);
@@ -217,19 +248,25 @@ public class PlateQueueManager : MonoBehaviour
 
     private void SpawnQueue(int count)
     {
+        maxPlateCount = count > 0 ? count : 0;
         if (count <= 0 || plateFactory == null)
         {
+            RefreshPlateCountText();
             return;
         }
+
+        EnsurePlatesRoot();
 
         for (int i = 0; i < count; i++)
         {
             Plate plate = plateFactory.Create();
-            plate.transform.SetParent(transform, false);
+            plate.SetHome(platesRoot);
             GetQueuePose(i, plate, out Vector3 pos, out Quaternion rot);
             plate.PlaceInQueue(pos, rot);
             queuedPlates.Add(plate);
         }
+
+        RefreshPlateCountText();
     }
 
     private void GetQueuePose(int index, Plate settingsSource, out Vector3 worldPosition, out Quaternion worldRotation)
@@ -292,20 +329,76 @@ public class PlateQueueManager : MonoBehaviour
     {
         for (int i = 0; i < queuedPlates.Count; i++)
         {
-            if (queuedPlates[i] != null)
-                Destroy(queuedPlates[i].gameObject);
+            ReleasePlate(queuedPlates[i]);
         }
 
         for (int i = 0; i < activePlates.Count; i++)
         {
-            if (activePlates[i] != null)
-                Destroy(activePlates[i].gameObject);
+            ReleasePlate(activePlates[i]);
         }
 
         queuedPlates.Clear();
         activePlates.Clear();
         boundByShooter.Clear();
         isBoardingBusy = false;
+        maxPlateCount = 0;
+        RefreshPlateCountText();
+    }
+
+    private void RefreshPlateCountText()
+    {
+        if (plateCountText == null)
+        {
+            return;
+        }
+
+        int length = WritePlateCount(queuedPlates.Count, maxPlateCount);
+        plateCountText.SetCharArray(plateCountBuffer, 0, length);
+    }
+
+    private int WritePlateCount(int waiting, int max)
+    {
+        int length = WriteNonNegative(0, waiting);
+        plateCountBuffer[length] = '/';
+        length++;
+        return WriteNonNegative(length, max);
+    }
+
+    private int WriteNonNegative(int start, int value)
+    {
+        if (value < 0)
+        {
+            value = 0;
+        }
+
+        int digits = 1;
+        int probe = value;
+        while (probe >= 10)
+        {
+            probe /= 10;
+            digits++;
+        }
+
+        int index = start + digits;
+        for (int i = digits - 1; i >= 0; i--)
+        {
+            index--;
+            plateCountBuffer[index] = (char)('0' + (value % 10));
+            value /= 10;
+        }
+
+        return start + digits;
+    }
+
+    private void ReleasePlate(Plate plate)
+    {
+        if (plate == null)
+        {
+            return;
+        }
+
+        SplineExtensions.ClearExistingFollowers(plate.gameObject, objectPool);
+        Destroy(plate.gameObject);
     }
 
     private void OnDestroy()

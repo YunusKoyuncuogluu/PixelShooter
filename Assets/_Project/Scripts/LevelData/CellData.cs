@@ -40,10 +40,38 @@ namespace Grids
         private int directionLevel = 0;
 
         [SerializeField]
-        [MinValue(0)]
+        [PropertyRange(0, 400)]
         [LabelText("Shot Count")]
         [FormerlySerializedAs("m_ShotCount")]
         private int shotCount;
+
+        [ButtonGroup("ShotStepper")]
+        [Button("-10")]
+        private void DecreaseShotCountByTen()
+        {
+            SetShotCount(shotCount - 10);
+        }
+
+        [ButtonGroup("ShotStepper")]
+        [Button("-1")]
+        private void DecreaseShotCount()
+        {
+            SetShotCount(shotCount - 1);
+        }
+
+        [ButtonGroup("ShotStepper")]
+        [Button("+1")]
+        private void IncreaseShotCount()
+        {
+            SetShotCount(shotCount + 1);
+        }
+
+        [ButtonGroup("ShotStepper")]
+        [Button("+10")]
+        private void IncreaseShotCountByTen()
+        {
+            SetShotCount(shotCount + 10);
+        }
 
         private int tunnelIndex;
         private int questionIndex;

@@ -12,7 +12,7 @@ namespace PixelShooter.Editor
         [MenuItem("Tools/PixelShooter/Set Default Plate Count On All Levels")]
         private static void SetDefaultPlateCountOnAllLevels()
         {
-            string[] guids = AssetDatabase.FindAssets("t:LevelData", new[] { "Assets/Resources/Levels" });
+            string[] guids = AssetDatabase.FindAssets("t:LevelData", new[] { "Assets/_Project/Data/Levels" });
             int updated = 0;
 
             for (int i = 0; i < guids.Length; i++)

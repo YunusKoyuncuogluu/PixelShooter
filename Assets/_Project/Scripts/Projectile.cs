@@ -1,8 +1,9 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using PixelShooter.Pooling;
 using UnityEngine;
 
-public class Projectile : MonoBehaviour
+public class Projectile : MonoBehaviour, IPoolObject
 {
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
@@ -10,10 +11,27 @@ public class Projectile : MonoBehaviour
     private Renderer cachedRenderer;
     private MaterialPropertyBlock propertyBlock;
 
+    private void Awake()
+    {
+        Prepare();
+    }
+
     public void Prepare()
     {
-        cachedRenderer = GetComponent<Renderer>();
-        propertyBlock = new MaterialPropertyBlock();
+        if (cachedRenderer == null)
+        {
+            cachedRenderer = GetComponent<Renderer>();
+        }
+
+        if (propertyBlock == null)
+        {
+            propertyBlock = new MaterialPropertyBlock();
+        }
+    }
+
+    public void Reset()
+    {
+        Hide();
     }
 
     public void SetColor(Color color)

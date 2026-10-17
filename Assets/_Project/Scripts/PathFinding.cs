@@ -53,7 +53,7 @@ public class PathFinding
                 Vector2Int next = current + directions[i];
                 if (next.x < 0 || next.x >= this.width || next.y < 0 || next.y >= this.height)
                     continue;
-                if (this.cells[next.x, next.y].IsFull || this.cells[next.x, next.y].IsLocked || visited[next.x, next.y])
+                if (this.cells[next.x, next.y].BlocksPath || visited[next.x, next.y])
                     continue;
 
                 queue.Enqueue(next);

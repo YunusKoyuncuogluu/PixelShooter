@@ -28,7 +28,7 @@ namespace PixelShooter.Game
         [Inject] private TunnelManager tunnelManager;
         [Inject] private global::Game.PlayerController playerController;
         [InjectOptional] private LevelFlowController levelFlowController;
-        [InjectOptional] private GameHUD gameHud;
+        [InjectOptional] private UIManager uiManager;
 
         private bool active;
         private float rampElapsed;
@@ -69,7 +69,8 @@ namespace PixelShooter.Game
 
             active = false;
             rampElapsed = 0f;
-            Time.timeScale = 1f;
+            if (levelFlowController == null || !levelFlowController.IsResultShown)
+                Time.timeScale = 1f;
         }
 
         public void Dispose()
@@ -83,8 +84,10 @@ namespace PixelShooter.Game
             rampElapsed = 0f;
             if (playerController != null)
                 playerController.SetActive(false);
-            if (gameHud != null)
-                gameHud.LockForFastForward();
+
+            if (uiManager != null)
+                uiManager.LockGameplay();
+
             ApplySpeed();
             DispatchParkedShooters();
             DispatchGridShooters();

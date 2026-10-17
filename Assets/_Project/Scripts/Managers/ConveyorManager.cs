@@ -3,6 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
 using PixelShooter.Game;
+using PixelShooter.Pooling;
 using UnityEngine;
 using Zenject;
 
@@ -13,6 +14,7 @@ public class ConveyorManager : MonoBehaviour
     [InjectOptional] private PixelShooter.Game.LevelFlowController levelFlowController;
     [InjectOptional] private PlateQueueManager plateQueueManager;
     [Inject] private IFastForwardGate fastForwardGate;
+    [Inject] private ObjectPool objectPool;
 
     [SerializeField] private SplineComputer conveyorSpline;
 
@@ -25,16 +27,39 @@ public class ConveyorManager : MonoBehaviour
     }
 
     private bool failTriggered;
+    private bool halted;
     private bool eventsHooked;
+
+    public bool IsHalted => halted;
 
     private void Start()
     {
         HookEvents();
+        if (levelFlowController != null)
+            levelFlowController.GameplayStopped += Halt;
     }
 
     private void OnDestroy()
     {
+        if (levelFlowController != null)
+            levelFlowController.GameplayStopped -= Halt;
         UnhookEvents();
+    }
+
+    public void Halt()
+    {
+        if (halted)
+            return;
+
+        halted = true;
+        for (int i = activeShooters.Count - 1; i >= 0; i--)
+        {
+            ShooterController shooterController = activeShooters[i];
+            if (shooterController == null)
+                continue;
+
+            shooterController.StopTravel();
+        }
     }
 
     private void HookEvents()
@@ -57,7 +82,7 @@ public class ConveyorManager : MonoBehaviour
 
     public void SendShooterToConveyor(ShooterController shooterController, Slot originSlot)
     {
-        if (shooterController == null || conveyorSpline == null)
+        if (halted || shooterController == null || conveyorSpline == null)
         {
             return;
         }
@@ -81,7 +106,7 @@ public class ConveyorManager : MonoBehaviour
 
     public void HandleShooterFinished(ShooterController shooterController, bool outOfAmmo)
     {
-        if (shooterController == null)
+        if (halted || shooterController == null)
             return;
 
         DetachPlateFollower(shooterController);
@@ -102,6 +127,9 @@ public class ConveyorManager : MonoBehaviour
 
     private void ReturnShooterToSlotArea(ShooterController shooterController)
     {
+        if (halted)
+            return;
+
         if (slotManager.GetAvailableSlot() == null)
         {
             if (fastForwardGate != null && fastForwardGate.IsActive)
@@ -123,6 +151,8 @@ public class ConveyorManager : MonoBehaviour
         CancellationToken cancellationToken = this.GetCancellationTokenOnDestroy();
         while (!cancellationToken.IsCancellationRequested)
         {
+            if (halted)
+                break;
             if (fastForwardGate == null || !fastForwardGate.IsActive)
                 break;
             if (slotManager.GetAvailableSlot() != null)
@@ -131,7 +161,7 @@ public class ConveyorManager : MonoBehaviour
             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
         }
 
-        if (shooterController == null)
+        if (halted || shooterController == null)
             return;
 
         if (slotManager.GetAvailableSlot() == null)
@@ -146,6 +176,9 @@ public class ConveyorManager : MonoBehaviour
 
     private void PlaceReturningShooter(ShooterController shooterController)
     {
+        if (halted)
+            return;
+
         Slot freeSlot = slotManager.GetAvailableSlot();
         if (freeSlot == null)
         {
@@ -166,7 +199,7 @@ public class ConveyorManager : MonoBehaviour
 
     private void AttachPlateFollower(ShooterController shooterController)
     {
-        SplineExtensions.ClearExistingFollowers(shooterController.gameObject);
+        SplineExtensions.ClearExistingFollowers(shooterController.gameObject, objectPool);
 
         Plate plate = plateQueueManager != null ? plateQueueManager.GetBoundPlate(shooterController) : null;
         if (plate == null)
@@ -175,7 +208,7 @@ public class ConveyorManager : MonoBehaviour
             return;
         }
 
-        SplineExtensions.ClearExistingFollowers(plate.gameObject);
+        SplineExtensions.ClearExistingFollowers(plate.gameObject, objectPool);
 
         Shooter shooter = shooterController.GetComponent<Shooter>();
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;

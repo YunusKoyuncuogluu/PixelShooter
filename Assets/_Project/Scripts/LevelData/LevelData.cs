@@ -19,11 +19,22 @@ namespace LevelManagement
 #if UNITY_EDITOR
 
         private static LevelData editorDrawContext;
+        private static bool editorDrawActive;
         internal ShooterShotPlan editorShotPlan;
         private int editorShotPlanFrame = -1;
 
-        [PropertyOrder(-1000)]
-        [Button("Generate Random Level", ButtonSizes.Large)]
+        public void BeginEditorDraw()
+        {
+            editorDrawActive = true;
+            editorDrawContext = this;
+        }
+
+        public void EndEditorDraw()
+        {
+            editorDrawActive = false;
+        }
+
+        [ContextMenu("Generate Random Level")]
         private void GenerateRandomLevelButton()
         {
             new LevelRandomGenerator(this).Generate();
@@ -68,11 +79,33 @@ namespace LevelManagement
         private bool pixelYMigrated;
 
 #if UNITY_EDITOR
+        private const string DefaultCellLabelFontPath = "Assets/_Project/Fonts/Nunito-Black.ttf";
+        private static readonly GUIContent unknownLabel = new GUIContent("Unknow");
+        private static Font defaultCellLabelFont;
+
         private GUIStyle levelLabelStyle;
         private GUIStyle shotCountStyle;
 
+        private static Font DefaultCellLabelFont
+        {
+            get
+            {
+                if (defaultCellLabelFont == null)
+                {
+                    defaultCellLabelFont = AssetDatabase.LoadAssetAtPath<Font>(DefaultCellLabelFontPath);
+                }
+
+                return defaultCellLabelFont;
+            }
+        }
+
         private static CellData DrawCell(Rect rect, ref CellData element)
         {
+            if (editorDrawContext == null)
+            {
+                return element;
+            }
+
             if (Event.current.type == EventType.KeyDown && rect.Contains(Event.current.mousePosition) && editorDrawContext.cellDataDistance != null)
             {
                 if (Event.current.keyCode == KeyCode.Alpha0 || Event.current.keyCode == KeyCode.Keypad0)
@@ -103,34 +136,30 @@ namespace LevelManagement
                 }
             }
 
-            if (Event.current.type == EventType.ScrollWheel &&
-                rect.Contains(Event.current.mousePosition) &&
-                element != null &&
-                (element.ColorLevel != 0 || element.IsQuestionShooter))
-            {
-                int delta = Event.current.delta.y < 0f ? 1 : -1;
-                editorDrawContext.EnsureShotPlan();
-                int current = editorDrawContext.editorShotPlan.ForCell(element);
-                element.SetShotCount(current + delta);
-                editorDrawContext.editorShotPlan = null;
-                GUI.changed = true;
-                Event.current.Use();
-            }
-
             if (Event.current.type == EventType.KeyDown &&
                 rect.Contains(Event.current.mousePosition) &&
                 element != null &&
+                !element.IsTunnel &&
                 (element.ColorLevel != 0 || element.IsQuestionShooter) &&
                 (Event.current.keyCode == KeyCode.Equals ||
                  Event.current.keyCode == KeyCode.KeypadPlus ||
                  Event.current.keyCode == KeyCode.Minus ||
-                 Event.current.keyCode == KeyCode.KeypadMinus))
+                 Event.current.keyCode == KeyCode.KeypadMinus ||
+                 Event.current.keyCode == KeyCode.UpArrow ||
+                 Event.current.keyCode == KeyCode.DownArrow))
             {
-                int delta = Event.current.keyCode == KeyCode.Minus || Event.current.keyCode == KeyCode.KeypadMinus ? -1 : 1;
-                editorDrawContext.EnsureShotPlan();
-                int current = editorDrawContext.editorShotPlan.ForCell(element);
-                element.SetShotCount(current + delta);
-                editorDrawContext.editorShotPlan = null;
+                int delta = 1;
+                if (Event.current.keyCode == KeyCode.Minus || Event.current.keyCode == KeyCode.KeypadMinus || Event.current.keyCode == KeyCode.DownArrow)
+                {
+                    delta = -1;
+                }
+
+                if (Event.current.shift)
+                {
+                    delta *= 10;
+                }
+
+                editorDrawContext.WriteShotCount(element, element.ShotCount + delta);
                 GUI.changed = true;
                 Event.current.Use();
             }
@@ -222,41 +251,41 @@ namespace LevelManagement
                 {
                     editorDrawContext.NumberTunnels();
 
-                    string directionText;
+                    string directionArrow;
                     switch (element.Direction)
                     {
                         case Direction.Left:
-                            directionText = "←" + " T" + element.TunnelIndex;
+                            directionArrow = "←";
                             break;
                         case Direction.Right:
-                            directionText = "→" + " T" + element.TunnelIndex;
+                            directionArrow = "→";
                             break;
                         case Direction.Up:
-                            directionText = "↑" + " T" + element.TunnelIndex;
+                            directionArrow = "↑";
                             break;
                         case Direction.Down:
-                            directionText = "↓" + " T" + element.TunnelIndex;
+                            directionArrow = "↓";
                             break;
                         default:
-                            directionText = "NULL" + " T" + element.TunnelIndex;
+                            directionArrow = string.Empty;
                             break;
                     }
 
-                    GUIStyle style = new GUIStyle(GUI.skin.label)
-                    {
-                        alignment = TextAnchor.MiddleCenter,
-                        fontStyle = FontStyle.Normal,
-                        fontSize = 20,
-                    };
+                    string directionText = string.IsNullOrEmpty(directionArrow)
+                        ? "Tunnel"
+                        : "Tunnel\n" + directionArrow;
 
-                    GUI.Label(rect.Padding(1), directionText, style);
+                    editorDrawContext.PrepareCellLabelStyle(rect);
+                    GUI.Label(rect.Padding(1), directionText, editorDrawContext.levelLabelStyle);
                 }
 
                 if (element.IsQuestionShooter)
                 {
                     editorDrawContext.NumberQuestionShooter();
-                    string questionText = "Q" + element.QuestionIndex;
-                    GUI.Label(rect.Padding(1), questionText, editorDrawContext.levelLabelStyle);
+                    editorDrawContext.PrepareCellLabelStyle(rect);
+                    editorDrawContext.FitLabelToWidth(unknownLabel, rect.width);
+                    Rect unknownRect = new Rect(rect.x, rect.y, rect.width, rect.height * 0.58f);
+                    GUI.Label(unknownRect.Padding(1), unknownLabel, editorDrawContext.levelLabelStyle);
                     editorDrawContext.DrawShotCount(rect, element);
                 }
 
@@ -289,20 +318,170 @@ namespace LevelManagement
             editorShotPlanFrame = Time.frameCount;
         }
 
+        private void WriteShotCount(CellData cell, int value)
+        {
+            if (cell == null)
+            {
+                return;
+            }
+
+            cell.SetShotCount(value);
+            if (cell.IsQuestionShooter && questionShooterData != null)
+            {
+                int index = CountQuestionShootersBefore(cell);
+                if (index >= 0 && index < questionShooterData.Count && questionShooterData[index] != null)
+                {
+                    questionShooterData[index].SetShotCount(cell.ShotCount);
+                }
+            }
+
+            editorShotPlan = null;
+        }
+
+        [FoldoutGroup("Grid")]
+        [OnInspectorGUI]
+        private void DrawSelectedColorBudget()
+        {
+            if (cellDataDistance == null)
+            {
+                return;
+            }
+
+            int colorId = cellDataDistance.ColorLevel;
+            if (colorId <= 0 && cellDataDistance.IsQuestionShooter && questionShooterData != null)
+            {
+                int index = CountQuestionShootersBefore(cellDataDistance);
+                if (index >= 0 && index < questionShooterData.Count && questionShooterData[index] != null)
+                {
+                    colorId = (int)questionShooterData[index].Color;
+                }
+            }
+
+            if (colorId <= 0)
+            {
+                return;
+            }
+
+            int pixels = 0;
+            if (pixelGrid != null)
+            {
+                int pixelWidth = pixelGrid.GetLength(0);
+                int pixelHeight = pixelGrid.GetLength(1);
+                for (int y = 0; y < pixelHeight; y++)
+                {
+                    for (int x = 0; x < pixelWidth; x++)
+                    {
+                        PixelCellData pixel = pixelGrid[x, y];
+                        if (pixel != null && pixel.HasPixel && pixel.PaletteId == colorId)
+                        {
+                            pixels++;
+                        }
+                    }
+                }
+            }
+
+            int shots = 0;
+            int questionCursor = 0;
+            for (int y = 0; y < cellData.GetLength(1); y++)
+            {
+                for (int x = 0; x < cellData.GetLength(0); x++)
+                {
+                    CellData cell = cellData[x, y];
+                    if (cell == null)
+                    {
+                        continue;
+                    }
+
+                    if (cell.IsQuestionShooter)
+                    {
+                        ShooterData questionData = null;
+                        if (questionShooterData != null && questionCursor < questionShooterData.Count)
+                        {
+                            questionData = questionShooterData[questionCursor];
+                            questionCursor++;
+                        }
+
+                        int questionColor = questionData != null ? (int)questionData.Color : 0;
+                        if (questionColor == colorId)
+                        {
+                            shots += cell.ShotCount > 0 || questionData == null ? cell.ShotCount : questionData.ShotCount;
+                        }
+
+                        continue;
+                    }
+
+                    if (cell.ColorLevel == colorId)
+                    {
+                        shots += cell.ShotCount;
+                    }
+                }
+            }
+
+            if (tunnelShooterData != null)
+            {
+                for (int tunnelIndex = 0; tunnelIndex < tunnelShooterData.Count; tunnelIndex++)
+                {
+                    TunnelData tunnel = tunnelShooterData[tunnelIndex];
+                    if (tunnel == null || tunnel.Shooters == null)
+                    {
+                        continue;
+                    }
+
+                    for (int shooterIndex = 0; shooterIndex < tunnel.Shooters.Count; shooterIndex++)
+                    {
+                        ShooterData data = tunnel.Shooters[shooterIndex];
+                        if (data != null && (int)data.Color == colorId)
+                        {
+                            shots += data.ShotCount;
+                        }
+                    }
+                }
+            }
+
+            string message = "Color " + colorId + ": " + shots + " shots / " + pixels + " pixels. Other shooters stay unchanged.";
+            EditorGUILayout.HelpBox(message, shots == pixels ? MessageType.Info : MessageType.Warning);
+        }
+
+        private int GetDisplayedShotCount(CellData element)
+        {
+            if (element == null)
+            {
+                return 0;
+            }
+
+            if (element.ShotCount > 0 || !element.IsQuestionShooter)
+            {
+                return element.ShotCount;
+            }
+
+            if (questionShooterData == null)
+            {
+                return 0;
+            }
+
+            int index = CountQuestionShootersBefore(element);
+            if (index < 0 || index >= questionShooterData.Count || questionShooterData[index] == null)
+            {
+                return 0;
+            }
+
+            return questionShooterData[index].ShotCount;
+        }
+
         private void DrawShotCount(Rect rect, CellData element)
         {
-            EnsureShotPlan();
-
-            int shots = editorShotPlan.ForCell(element);
+            int shots = GetDisplayedShotCount(element);
             if (shotCountStyle == null)
             {
                 shotCountStyle = new GUIStyle(GUI.skin.label)
                 {
-                    alignment = TextAnchor.MiddleCenter,
                     fontStyle = FontStyle.Bold
                 };
             }
 
+            shotCountStyle.alignment = TextAnchor.MiddleCenter;
+            shotCountStyle.wordWrap = true;
+            shotCountStyle.font = DefaultCellLabelFont;
             shotCountStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt(rect.height * 0.42f));
             shotCountStyle.normal.textColor = Color.white;
             Rect labelRect = element.IsQuestionShooter
@@ -311,17 +490,48 @@ namespace LevelManagement
             GUI.Label(labelRect, shots.ToString(), shotCountStyle);
         }
 
+        private void PrepareCellLabelStyle(Rect rect)
+        {
+            if (levelLabelStyle == null)
+            {
+                levelLabelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontStyle = FontStyle.Bold
+                };
+            }
+
+            levelLabelStyle.alignment = TextAnchor.MiddleCenter;
+            levelLabelStyle.wordWrap = true;
+            levelLabelStyle.font = DefaultCellLabelFont;
+            levelLabelStyle.fontSize = Mathf.Max(8, Mathf.RoundToInt(rect.height * 0.24f));
+            levelLabelStyle.normal.textColor = Color.white;
+        }
+
+        private void FitLabelToWidth(GUIContent content, float width)
+        {
+            levelLabelStyle.wordWrap = false;
+            float availableWidth = Mathf.Max(8f, width - 6f);
+            Vector2 size = levelLabelStyle.CalcSize(content);
+            if (size.x > availableWidth)
+            {
+                float fittedSize = levelLabelStyle.fontSize * (availableWidth / size.x);
+                levelLabelStyle.fontSize = Mathf.Max(8, Mathf.FloorToInt(fittedSize));
+            }
+        }
+
         private void SetTextProperties()
         {
             if (levelLabelStyle == null)
             {
                 levelLabelStyle = new GUIStyle(GUI.skin.label)
                 {
-                    alignment = TextAnchor.MiddleCenter,
                     fontStyle = FontStyle.Bold
                 };
             }
 
+            levelLabelStyle.alignment = TextAnchor.MiddleCenter;
+            levelLabelStyle.wordWrap = true;
+            levelLabelStyle.font = DefaultCellLabelFont;
             levelLabelStyle.fontSize = 50;
         }
 
@@ -714,6 +924,11 @@ namespace LevelManagement
         private void OnInspectorDispose()
         {
 #if UNITY_EDITOR
+            if (editorDrawActive)
+            {
+                return;
+            }
+
             editorDrawContext = null;
 #endif
         }

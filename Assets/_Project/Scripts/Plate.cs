@@ -2,6 +2,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Dreamteck.Splines;
+using PixelShooter.Pooling;
 using UnityEngine;
 using Zenject;
 using Random = UnityEngine.Random;
@@ -32,6 +33,9 @@ public class Plate : MonoBehaviour
     [SerializeField] private float travelArcHeightMax = 7.5f;
 
     private Transform cachedTransform;
+    private Transform homeRoot;
+
+    [Inject] private ObjectPool objectPool;
     private Tween activeTween;
     private SplineFollower cachedFollower;
     private bool hasPassenger;
@@ -70,6 +74,12 @@ public class Plate : MonoBehaviour
         return flatWorldPosition + flatWorldRotation * seatPoint.localPosition;
     }
 
+    public void SetHome(Transform home)
+    {
+        homeRoot = home;
+        AttachHome();
+    }
+
     public void FlyToQueue(Vector3 worldPosition, Quaternion worldRotation)
     {
         FlyToQueueAsync(worldPosition, worldRotation).Forget();
@@ -83,11 +93,12 @@ public class Plate : MonoBehaviour
         KillTween();
         DetachFollower();
         hasPassenger = false;
-        cachedTransform.SetParent(null, true);
+        AttachHome();
         gameObject.SetActive(true);
 
         Quaternion startRotation = cachedTransform.rotation;
         await gameObject.FollowToAsync(
+            objectPool,
             worldPosition,
             DeployTravelSpeed,
             DeployArcHeight,
@@ -110,7 +121,7 @@ public class Plate : MonoBehaviour
         KillTween();
         DetachFollower();
         hasPassenger = false;
-        cachedTransform.SetParent(null, true);
+        AttachHome();
         cachedTransform.position = worldPosition;
         cachedTransform.rotation = worldRotation;
         gameObject.SetActive(true);
@@ -126,6 +137,7 @@ public class Plate : MonoBehaviour
 
         Quaternion startRot = cachedTransform.rotation;
         await gameObject.FollowToAsync(
+            objectPool,
             flatWorldPosition,
             DeployTravelSpeed,
             DeployArcHeight,
@@ -213,8 +225,23 @@ public class Plate : MonoBehaviour
         KillTween();
         DetachFollower();
         hasPassenger = false;
-        cachedTransform.SetParent(null, true);
+        AttachHome();
         gameObject.SetActive(false);
+    }
+
+    private void AttachHome()
+    {
+        if (cachedTransform == null)
+        {
+            cachedTransform = transform;
+        }
+
+        if (homeRoot == null || cachedTransform.parent == homeRoot)
+        {
+            return;
+        }
+
+        cachedTransform.SetParent(homeRoot, true);
     }
 
     private void KillTween()

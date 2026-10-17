@@ -11,7 +11,7 @@ namespace PixelShooter.Editor
 {
     public class LevelGeneratorWindow : EditorWindow
     {
-        private const string LevelsFolder = "Assets/Resources/Levels";
+        private const string LevelsFolder = "Assets/_Project/Data/Levels";
         private const int MinGridSize = 5;
         private const int MaxGridSize = 10;
         private const int MinShootersPerTunnel = 2;
@@ -93,6 +93,8 @@ namespace PixelShooter.Editor
                 AssetDatabase.CreateAsset(generated, path);
             }
 
+            RegisterInDatabase(generated);
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             EditorGUIUtility.PingObject(generated);
@@ -146,10 +148,50 @@ namespace PixelShooter.Editor
 
         private void EnsureLevelsFolder()
         {
-            if (!AssetDatabase.IsValidFolder("Assets/Resources"))
-                AssetDatabase.CreateFolder("Assets", "Resources");
-            if (!AssetDatabase.IsValidFolder("Assets/Resources/Levels"))
-                AssetDatabase.CreateFolder("Assets/Resources", "Levels");
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Data"))
+            {
+                AssetDatabase.CreateFolder("Assets/_Project", "Data");
+            }
+
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Data/Levels"))
+            {
+                AssetDatabase.CreateFolder("Assets/_Project/Data", "Levels");
+            }
+        }
+
+        private static void RegisterInDatabase(LevelData level)
+        {
+            if (level == null)
+            {
+                return;
+            }
+
+            LevelDatabase database = AssetDatabase.LoadAssetAtPath<LevelDatabase>("Assets/_Project/Data/LevelDatabase.asset");
+            if (database == null)
+            {
+                return;
+            }
+
+            SerializedObject serialized = new SerializedObject(database);
+            SerializedProperty levels = serialized.FindProperty("levels");
+            if (levels == null || !levels.isArray)
+            {
+                return;
+            }
+
+            for (int i = 0; i < levels.arraySize; i++)
+            {
+                if (levels.GetArrayElementAtIndex(i).objectReferenceValue == level)
+                {
+                    return;
+                }
+            }
+
+            int index = levels.arraySize;
+            levels.arraySize = index + 1;
+            levels.GetArrayElementAtIndex(index).objectReferenceValue = level;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(database);
         }
 
         private void GenerateAll()
@@ -161,6 +203,7 @@ namespace PixelShooter.Editor
                 LevelData level = GenerateLevel(n);
                 string path = $"{LevelsFolder}/Level_{n}.asset";
                 AssetDatabase.CreateAsset(level, path);
+                RegisterInDatabase(level);
                 EditorUtility.DisplayProgressBar("Generate Levels", $"Level {n}/100", n / 100f);
             }
             EditorUtility.ClearProgressBar();
