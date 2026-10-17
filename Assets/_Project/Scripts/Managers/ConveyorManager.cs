@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Dreamteck.Splines;
-using RopeWrap.Game;
+using PixelShooter.Game;
 using UnityEngine;
 using Zenject;
 
@@ -10,7 +10,7 @@ public class ConveyorManager : MonoBehaviour
 {
     [Inject] private SlotManager slotManager;
     [Inject] private ImageManager imageManager;
-    [InjectOptional] private RopeWrap.Game.LevelFlowController levelFlowController;
+    [InjectOptional] private PixelShooter.Game.LevelFlowController levelFlowController;
     [InjectOptional] private PlateQueueManager plateQueueManager;
     [Inject] private IFastForwardGate fastForwardGate;
 

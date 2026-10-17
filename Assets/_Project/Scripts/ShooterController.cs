@@ -14,7 +14,7 @@ public class ShooterController : MonoBehaviour
     [InjectOptional] private ConveyorManager conveyorManager;
     [InjectOptional] private PlateQueueManager plateQueueManager;
     [Inject] private SlotManager slotManager;
-    [InjectOptional] private RopeWrap.Game.IFastForwardGate fastForwardGate;
+    [InjectOptional] private PixelShooter.Game.IFastForwardGate fastForwardGate;
 
     [FormerlySerializedAs("minOrbitDuration")]
     [SerializeField] private float minLapDuration = 1.8f;

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "LevelPixelData", menuName = "Pixel Flow/Level Pixel Data")]
+[CreateAssetMenu(fileName = "LevelPixelData", menuName = "PixelShooter/Level Pixel Data")]
 public class LevelPixelData : ScriptableObject
 {
     [SerializeField] private Vector2Int textureSize;

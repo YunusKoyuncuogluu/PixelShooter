@@ -7,7 +7,7 @@ using LevelManagement;
 using UnityEditor;
 using UnityEngine;
 
-namespace RopeWrap.Editor
+namespace PixelShooter.Editor
 {
     public class LevelGeneratorWindow : EditorWindow
     {
@@ -24,7 +24,7 @@ namespace RopeWrap.Editor
             GetWindow<LevelGeneratorWindow>("Level Generator").Show();
         }
 
-        [MenuItem("Tools/Pixel Flow/Generate Level 1 (Balanced)")]
+        [MenuItem("Tools/PixelShooter/Generate Level 1 (Balanced)")]
         public static void GenerateLevel1Menu()
         {
             LevelGeneratorWindow tool = CreateInstance<LevelGeneratorWindow>();

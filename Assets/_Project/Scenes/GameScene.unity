@@ -4257,7 +4257,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 649d7b860675f654aa39799c7ec69353, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RopeWrap.UI.ConfettiPlayer
+  m_EditorClassIdentifier: Assembly-CSharp::PixelShooter.UI.ConfettiPlayer
   confettiParticles: {fileID: 0}
   playDuration: 2
 --- !u!4 &1749027965

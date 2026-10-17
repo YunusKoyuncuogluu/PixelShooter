@@ -1,4 +1,4 @@
-namespace RopeWrap.Core
+namespace PixelShooter.Core
 {
 
     public class SceneNames

@@ -15,7 +15,7 @@ public class Shooter : MonoBehaviour
     [Inject] private SlotManager slotManager;
     [Inject] private TunnelManager tunnelManager;
     [Inject] private AudioPool audioPool;
-    [InjectOptional] private RopeWrap.Game.IFastForwardGate fastForwardGate;
+    [InjectOptional] private PixelShooter.Game.IFastForwardGate fastForwardGate;
 
     [FormerlySerializedAs("m_Renderer")]
     [SerializeField] private Renderer rendererComponent;

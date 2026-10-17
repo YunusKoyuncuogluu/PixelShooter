@@ -1,7 +1,7 @@
 using UnityEngine;
 using Zenject;
 
-namespace RopeWrap.Core
+namespace PixelShooter.Core
 {
 
     public class InitBootstrap : MonoBehaviour

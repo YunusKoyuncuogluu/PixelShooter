@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "RopeWrap.sln"
+    "dotnet.defaultSolution": "PixelShooter.sln"
 }

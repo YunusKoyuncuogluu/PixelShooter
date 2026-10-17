@@ -1,5 +1,5 @@
 using UnityEngine.SceneManagement;
-using RopeWrap.Core;
+using PixelShooter.Core;
 
 public class SceneChanger
 {

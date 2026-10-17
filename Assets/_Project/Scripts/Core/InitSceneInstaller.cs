@@ -2,7 +2,7 @@ using UnityEngine;
 using Zenject;
 using UnityEngine.Serialization;
 
-namespace RopeWrap.Core
+namespace PixelShooter.Core
 {
 
     public class InitSceneInstaller : MonoInstaller<InitSceneInstaller>

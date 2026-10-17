@@ -13,11 +13,11 @@ C:\Program Files\Unity\Hub\Editor\6000.4.5f1\Editor\Unity.exe
 -nographics
 -quit
 -projectPath
-c:\Users\Yunus\Documents\GitHub\RopeWrap
+c:\Users\Yunus\Documents\GitHub\PixelShooter
 -executeMethod
-RopeWrap.Editor.LevelGeneratorWindow.GenerateLevel1Batch
+PixelShooter.Editor.LevelGeneratorWindow.GenerateLevel1Batch
 -logFile
-c:\Users\Yunus\Documents\GitHub\RopeWrap\level1_gen_log.txt
-Successfully changed project path to: c:\Users\Yunus\Documents\GitHub\RopeWrap
-C:/Users/Yunus/Documents/GitHub/RopeWrap
+c:\Users\Yunus\Documents\GitHub\PixelShooter\level1_gen_log.txt
+Successfully changed project path to: c:\Users\Yunus\Documents\GitHub\PixelShooter
+C:/Users/Yunus/Documents/GitHub/PixelShooter
 Exiting without the bug reporter. Application will terminate with return code 1

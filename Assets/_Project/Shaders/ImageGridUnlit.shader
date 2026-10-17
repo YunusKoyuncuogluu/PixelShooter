@@ -1,4 +1,4 @@
-Shader "RopeWrap/ImageGridUnlit"
+Shader "PixelShooter/ImageGridUnlit"
 {
     Properties
     {

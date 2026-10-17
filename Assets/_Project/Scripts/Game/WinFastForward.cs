@@ -1,9 +1,9 @@
 using System;
-using RopeWrap.UI;
+using PixelShooter.UI;
 using UnityEngine;
 using Zenject;
 
-namespace RopeWrap.Game
+namespace PixelShooter.Game
 {
     public interface IFastForwardGate
     {

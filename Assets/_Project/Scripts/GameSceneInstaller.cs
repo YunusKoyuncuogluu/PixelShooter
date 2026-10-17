@@ -1,5 +1,5 @@
-using RopeWrap.UI;
-using RopeWrap.Game;
+using PixelShooter.UI;
+using PixelShooter.Game;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;

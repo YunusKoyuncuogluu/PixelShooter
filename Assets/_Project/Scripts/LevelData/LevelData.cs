@@ -13,7 +13,7 @@ using UnityEditor;
 
 namespace LevelManagement
 {
-    [CreateAssetMenu(fileName = nameof(LevelData) + " 001", menuName = "RopeWrap" + "/" + nameof(LevelData))]
+    [CreateAssetMenu(fileName = nameof(LevelData) + " 001", menuName = "PixelShooter" + "/" + nameof(LevelData))]
     public class LevelData : ScriptableLevelBase
     {
 #if UNITY_EDITOR

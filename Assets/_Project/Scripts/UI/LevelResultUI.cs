@@ -4,7 +4,7 @@ using TMPro;
 using Zenject;
 using UnityEngine.Serialization;
 
-namespace RopeWrap.UI
+namespace PixelShooter.UI
 {
 
     public class LevelResultUI : MonoBehaviour

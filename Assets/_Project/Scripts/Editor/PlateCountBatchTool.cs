@@ -2,14 +2,14 @@ using LevelManagement;
 using UnityEditor;
 using UnityEngine;
 
-namespace RopeWrap.Editor
+namespace PixelShooter.Editor
 {
 
     public class PlateCountBatchTool
     {
         private const int DefaultPlateCount = 5;
 
-        [MenuItem("Tools/RopeWrap/Set Default Plate Count On All Levels")]
+        [MenuItem("Tools/PixelShooter/Set Default Plate Count On All Levels")]
         private static void SetDefaultPlateCountOnAllLevels()
         {
             string[] guids = AssetDatabase.FindAssets("t:LevelData", new[] { "Assets/Resources/Levels" });

@@ -2,9 +2,9 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Zenject;
-using RopeWrap.UI;
+using PixelShooter.UI;
 
-namespace RopeWrap.Game
+namespace PixelShooter.Game
 {
     public class LevelFlowController : MonoBehaviour
     {

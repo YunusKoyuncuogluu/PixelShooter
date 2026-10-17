@@ -3,7 +3,7 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-[CreateAssetMenu(fileName = nameof(ProjectSettings), menuName = "RopeWrap" + "/" + nameof(ProjectSettings), order = 0)]
+[CreateAssetMenu(fileName = nameof(ProjectSettings), menuName = "PixelShooter" + "/" + nameof(ProjectSettings), order = 0)]
 public class ProjectSettings : ScriptableObject
 {
     public const string ResourcePath = "Settings/" + nameof(ProjectSettings);

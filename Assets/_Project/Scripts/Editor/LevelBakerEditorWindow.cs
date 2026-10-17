@@ -3,7 +3,7 @@ using LevelManagement;
 using UnityEditor;
 using UnityEngine;
 
-namespace RopeWrap.Editor
+namespace PixelShooter.Editor
 {
 
     public class LevelBakerEditorWindow : EditorWindow
@@ -20,7 +20,7 @@ namespace RopeWrap.Editor
         private readonly PixelBakeUtility bakeUtility = new PixelBakeUtility();
         private readonly FacadePaletteMapper paletteMapper = new FacadePaletteMapper();
 
-        [MenuItem("Tools/Pixel Flow/Level Baker")]
+        [MenuItem("Tools/PixelShooter/Level Baker")]
         public static void Open()
         {
             LevelBakerEditorWindow window = GetWindow<LevelBakerEditorWindow>("Level Baker");
@@ -37,7 +37,7 @@ namespace RopeWrap.Editor
         private void OnGUI()
         {
             EditorGUILayout.Space(8f);
-            EditorGUILayout.LabelField("Pixel Flow Level Baker (paletteId bake)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("PixelShooter Level Baker (paletteId bake)", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "Bake: yakin tonlar ayni facade Level (id) alir (kirmizi tonlari → Red, pembe → Pink). " +
                 "paletteId = FacadeProperty.Level. Runtime sarma sadece bu int id ile eslesir; RGB yok.",
