@@ -25,16 +25,6 @@ public class GridCameraFitter : MonoBehaviour
         FitToGrid();
     }
 
-    private void LateUpdate()
-    {
-        int width = Screen.width;
-        int height = Screen.height;
-        if (width == lastScreenWidth && height == lastScreenHeight)
-            return;
-
-        FitToGrid();
-    }
-
 #if UNITY_EDITOR
     private void OnValidate()
     {

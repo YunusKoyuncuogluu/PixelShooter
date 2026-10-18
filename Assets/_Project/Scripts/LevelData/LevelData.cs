@@ -91,9 +91,7 @@ namespace LevelManagement
             get
             {
                 if (defaultCellLabelFont == null)
-                {
                     defaultCellLabelFont = AssetDatabase.LoadAssetAtPath<Font>(DefaultCellLabelFontPath);
-                }
 
                 return defaultCellLabelFont;
             }
@@ -102,9 +100,7 @@ namespace LevelManagement
         private static CellData DrawCell(Rect rect, ref CellData element)
         {
             if (editorDrawContext == null)
-            {
                 return element;
-            }
 
             if (Event.current.type == EventType.KeyDown && rect.Contains(Event.current.mousePosition) && editorDrawContext.cellDataDistance != null)
             {
@@ -150,14 +146,10 @@ namespace LevelManagement
             {
                 int delta = 1;
                 if (Event.current.keyCode == KeyCode.Minus || Event.current.keyCode == KeyCode.KeypadMinus || Event.current.keyCode == KeyCode.DownArrow)
-                {
                     delta = -1;
-                }
 
                 if (Event.current.shift)
-                {
                     delta *= 10;
-                }
 
                 editorDrawContext.WriteShotCount(element, element.ShotCount + delta);
                 GUI.changed = true;
@@ -228,9 +220,7 @@ namespace LevelManagement
 
             if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space &&
                 rect.Contains(Event.current.mousePosition))
-            {
                 editorDrawContext.ResetAllCell();
-            }
 
             if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R &&
                 rect.Contains(Event.current.mousePosition))
@@ -303,7 +293,6 @@ namespace LevelManagement
             EditorGUI.DrawRect(rect.Padding(1), shooterColor);
             if (ReferenceEquals(element, editorDrawContext.cellDataDistance))
                 editorDrawContext.DrawOutline(rect, Color.magenta, 4);
-            editorDrawContext.SetTextProperties();
             editorDrawContext.DrawShotCount(rect, element);
 
             return element;
@@ -321,18 +310,14 @@ namespace LevelManagement
         private void WriteShotCount(CellData cell, int value)
         {
             if (cell == null)
-            {
                 return;
-            }
 
             cell.SetShotCount(value);
             if (cell.IsQuestionShooter && questionShooterData != null)
             {
                 int index = CountQuestionShootersBefore(cell);
                 if (index >= 0 && index < questionShooterData.Count && questionShooterData[index] != null)
-                {
                     questionShooterData[index].SetShotCount(cell.ShotCount);
-                }
             }
 
             editorShotPlan = null;
@@ -343,24 +328,18 @@ namespace LevelManagement
         private void DrawSelectedColorBudget()
         {
             if (cellDataDistance == null)
-            {
                 return;
-            }
 
             int colorId = cellDataDistance.ColorLevel;
             if (colorId <= 0 && cellDataDistance.IsQuestionShooter && questionShooterData != null)
             {
                 int index = CountQuestionShootersBefore(cellDataDistance);
                 if (index >= 0 && index < questionShooterData.Count && questionShooterData[index] != null)
-                {
                     colorId = (int)questionShooterData[index].Color;
-                }
             }
 
             if (colorId <= 0)
-            {
                 return;
-            }
 
             int pixels = 0;
             if (pixelGrid != null)
@@ -373,9 +352,7 @@ namespace LevelManagement
                     {
                         PixelCellData pixel = pixelGrid[x, y];
                         if (pixel != null && pixel.HasPixel && pixel.PaletteId == colorId)
-                        {
                             pixels++;
-                        }
                     }
                 }
             }
@@ -388,9 +365,7 @@ namespace LevelManagement
                 {
                     CellData cell = cellData[x, y];
                     if (cell == null)
-                    {
                         continue;
-                    }
 
                     if (cell.IsQuestionShooter)
                     {
@@ -403,17 +378,13 @@ namespace LevelManagement
 
                         int questionColor = questionData != null ? (int)questionData.Color : 0;
                         if (questionColor == colorId)
-                        {
                             shots += cell.ShotCount > 0 || questionData == null ? cell.ShotCount : questionData.ShotCount;
-                        }
 
                         continue;
                     }
 
                     if (cell.ColorLevel == colorId)
-                    {
                         shots += cell.ShotCount;
-                    }
                 }
             }
 
@@ -423,17 +394,13 @@ namespace LevelManagement
                 {
                     TunnelData tunnel = tunnelShooterData[tunnelIndex];
                     if (tunnel == null || tunnel.Shooters == null)
-                    {
                         continue;
-                    }
 
                     for (int shooterIndex = 0; shooterIndex < tunnel.Shooters.Count; shooterIndex++)
                     {
                         ShooterData data = tunnel.Shooters[shooterIndex];
                         if (data != null && (int)data.Color == colorId)
-                        {
                             shots += data.ShotCount;
-                        }
                     }
                 }
             }
@@ -445,25 +412,17 @@ namespace LevelManagement
         private int GetDisplayedShotCount(CellData element)
         {
             if (element == null)
-            {
                 return 0;
-            }
 
             if (element.ShotCount > 0 || !element.IsQuestionShooter)
-            {
                 return element.ShotCount;
-            }
 
             if (questionShooterData == null)
-            {
                 return 0;
-            }
 
             int index = CountQuestionShootersBefore(element);
             if (index < 0 || index >= questionShooterData.Count || questionShooterData[index] == null)
-            {
                 return 0;
-            }
 
             return questionShooterData[index].ShotCount;
         }
@@ -517,22 +476,6 @@ namespace LevelManagement
                 float fittedSize = levelLabelStyle.fontSize * (availableWidth / size.x);
                 levelLabelStyle.fontSize = Mathf.Max(8, Mathf.FloorToInt(fittedSize));
             }
-        }
-
-        private void SetTextProperties()
-        {
-            if (levelLabelStyle == null)
-            {
-                levelLabelStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontStyle = FontStyle.Bold
-                };
-            }
-
-            levelLabelStyle.alignment = TextAnchor.MiddleCenter;
-            levelLabelStyle.wordWrap = true;
-            levelLabelStyle.font = DefaultCellLabelFont;
-            levelLabelStyle.fontSize = 50;
         }
 
         private void ResetCell(CellData element)
@@ -589,7 +532,9 @@ namespace LevelManagement
                 if (index > tunnelShooterData.Count)
                     index = tunnelShooterData.Count;
 
-                tunnelShooterData.Insert(index, TunnelData.CreateDefault());
+                TunnelData createdTunnel = new TunnelData();
+                createdTunnel.InitializeDefault();
+                tunnelShooterData.Insert(index, createdTunnel);
                 cell.SetTunnelShooter(true);
                 return;
             }
@@ -610,7 +555,11 @@ namespace LevelManagement
                 return;
 
             while (tunnelShooterData.Count < needed)
-                tunnelShooterData.Add(TunnelData.CreateDefault());
+            {
+                TunnelData createdTunnel = new TunnelData();
+                createdTunnel.InitializeDefault();
+                tunnelShooterData.Add(createdTunnel);
+            }
 
             while (tunnelShooterData.Count > needed)
                 tunnelShooterData.RemoveAt(tunnelShooterData.Count - 1);
@@ -622,52 +571,12 @@ namespace LevelManagement
 
         private int CountTunnels()
         {
-            if (cellData == null)
-                return 0;
-
-            int count = 0;
-            int rows = cellData.GetLength(1);
-            int columns = cellData.GetLength(0);
-            for (int row = 0; row < rows; row++)
-            {
-                for (int column = 0; column < columns; column++)
-                {
-                    CellData cell = cellData[column, row];
-                    if (cell != null && cell.IsTunnel)
-                        count++;
-                }
-            }
-
-            return count;
+            return CountMarkedCells(true);
         }
 
         internal int CountTunnelsBefore(CellData target)
         {
-            if (cellData == null || target == null)
-                return 0;
-
-            int count = 0;
-            for (int gameY = 0; gameY < this.height; gameY++)
-            {
-                int row = GameYToArrayRow(gameY);
-                if (row < 0 || row >= cellData.GetLength(1))
-                    continue;
-
-                for (int x = 0; x < this.width; x++)
-                {
-                    if (x >= cellData.GetLength(0))
-                        continue;
-
-                    CellData cell = cellData[x, row];
-                    if (ReferenceEquals(cell, target))
-                        return count;
-
-                    if (cell != null && cell.IsTunnel)
-                        count++;
-                }
-            }
-
-            return count;
+            return CountMarkedCellsBefore(target, true);
         }
 
         public void SetQuestionCell(CellData cell, bool enabled)
@@ -717,6 +626,16 @@ namespace LevelManagement
 
         private int CountQuestionShooters()
         {
+            return CountMarkedCells(false);
+        }
+
+        internal int CountQuestionShootersBefore(CellData target)
+        {
+            return CountMarkedCellsBefore(target, false);
+        }
+
+        private int CountMarkedCells(bool tunnels)
+        {
             if (cellData == null)
                 return 0;
 
@@ -728,7 +647,7 @@ namespace LevelManagement
                 for (int column = 0; column < columns; column++)
                 {
                     CellData cell = cellData[column, row];
-                    if (cell != null && cell.IsQuestionShooter)
+                    if (cell != null && IsMarkedCell(cell, tunnels))
                         count++;
                 }
             }
@@ -736,7 +655,7 @@ namespace LevelManagement
             return count;
         }
 
-        internal int CountQuestionShootersBefore(CellData target)
+        private int CountMarkedCellsBefore(CellData target, bool tunnels)
         {
             if (cellData == null || target == null)
                 return 0;
@@ -757,7 +676,7 @@ namespace LevelManagement
                     if (ReferenceEquals(cell, target))
                         return count;
 
-                    if (cell != null && cell.IsQuestionShooter)
+                    if (cell != null && IsMarkedCell(cell, tunnels))
                         count++;
                 }
             }
@@ -765,46 +684,42 @@ namespace LevelManagement
             return count;
         }
 
+        private static bool IsMarkedCell(CellData cell, bool tunnels)
+        {
+            return tunnels ? cell.IsTunnel : cell.IsQuestionShooter;
+        }
+
         private void NumberQuestionShooter()
         {
-            int questionIndex = 1;
-
-            for (int i = 0; i < this.height; i++)
-            {
-                for (int j = 0; j < this.width; j++)
-                {
-                    var cell = cellData[j, i];
-                    if (cell.IsQuestionShooter)
-                    {
-                        cell.QuestionIndex = questionIndex;
-                        questionIndex++;
-                    }
-                    else
-                    {
-                        cell.QuestionIndex = 0;
-                    }
-                }
-            }
+            NumberMarkedCells(false);
         }
 
         private void NumberTunnels()
         {
-            int tunnelIndex = 1;
+            NumberMarkedCells(true);
+        }
 
+        private void NumberMarkedCells(bool tunnels)
+        {
+            int index = 1;
             for (int i = 0; i < this.height; i++)
             {
                 for (int j = 0; j < this.width; j++)
                 {
-                    var cell = cellData[j, i];
-                    if (cell.IsTunnel)
+                    CellData cell = cellData[j, i];
+                    if (IsMarkedCell(cell, tunnels))
                     {
-                        cell.TunnelIndex = tunnelIndex;
-                        tunnelIndex++;
+                        if (tunnels)
+                            cell.TunnelIndex = index;
+                        else
+                            cell.QuestionIndex = index;
+
+                        index++;
                     }
-                    else
-                    {
+                    else if (tunnels)
                         cell.TunnelIndex = 0;
-                    }
+                    else
+                        cell.QuestionIndex = 0;
                 }
             }
         }
@@ -812,48 +727,33 @@ namespace LevelManagement
         internal void OnWidthChanged()
         {
             if (cellData.GetLength(0) != this.width)
-            {
-                CellData[,] newArray = new CellData[this.width, this.height];
-                int minRows = Math.Min(this.width, cellData.GetLength(0));
-                int minCols = Math.Min(this.height, cellData.GetLength(1));
-                for (int h = 0; h < this.height; h++)
-                {
-                    for (int w = 0; w < this.width; w++)
-                        newArray[w, h] = new CellData();
-                }
-
-                for (int i = 0; i < minRows; i++)
-                {
-                    for (int j = 0; j < minCols; j++)
-                        newArray[i, j] = cellData[i, j];
-                }
-
-                cellData = newArray;
-            }
+                ResizeCellGrid();
         }
 
         internal void OnHeightChanged()
         {
             if (cellData.GetLength(1) != this.height)
+                ResizeCellGrid();
+        }
+
+        private void ResizeCellGrid()
+        {
+            CellData[,] newArray = new CellData[this.width, this.height];
+            int minRows = Math.Min(this.width, cellData.GetLength(0));
+            int minCols = Math.Min(this.height, cellData.GetLength(1));
+            for (int h = 0; h < this.height; h++)
             {
-                CellData[,] newArray = new CellData[this.width, this.height];
-                int minRows = Math.Min(this.width, cellData.GetLength(0));
-                int minCols = Math.Min(this.height, cellData.GetLength(1));
-
-                for (int h = 0; h < this.height; h++)
-                {
-                    for (int w = 0; w < this.width; w++)
-                        newArray[w, h] = new CellData();
-                }
-
-                for (int i = 0; i < minRows; i++)
-                {
-                    for (int j = 0; j < minCols; j++)
-                        newArray[i, j] = cellData[i, j];
-                }
-
-                cellData = newArray;
+                for (int w = 0; w < this.width; w++)
+                    newArray[w, h] = new CellData();
             }
+
+            for (int i = 0; i < minRows; i++)
+            {
+                for (int j = 0; j < minCols; j++)
+                    newArray[i, j] = cellData[i, j];
+            }
+
+            cellData = newArray;
         }
 
         public void MigrateGridYIfNeeded()
@@ -925,9 +825,7 @@ namespace LevelManagement
         {
 #if UNITY_EDITOR
             if (editorDrawActive)
-            {
                 return;
-            }
 
             editorDrawContext = null;
 #endif
@@ -1082,7 +980,6 @@ namespace LevelManagement
 
         [FoldoutGroup("Image Pixel")]
         [LabelText("Force Visual")]
-        [Tooltip("Acikken esik asilsa bile pixel matrix gosterilir. Buyuk gridlerde Inspector kasabilir.")]
         [SerializeField]
         [FormerlySerializedAs("m_ForcePixelVisual")]
         private bool forcePixelVisual;
@@ -1120,7 +1017,6 @@ namespace LevelManagement
 #if UNITY_EDITOR
         [FoldoutGroup("Image Pixel")]
         [SerializeField]
-        [Tooltip("Bake icin kaynak texture (Read/Write acik olmali).")]
         [FormerlySerializedAs("m_PixelBakeSource")]
         private Texture2D pixelBakeSource;
 
@@ -1220,14 +1116,10 @@ namespace LevelManagement
         private void BakePixelFromTextureButton()
         {
             if (pixelBakeSource == null)
-            {
                 return;
-            }
 
             if (!pixelBakeSource.isReadable)
-            {
                 return;
-            }
 
             Color32[] raw = pixelBakeSource.GetPixels32();
             List<PixelData> baked;
@@ -1286,9 +1178,7 @@ namespace LevelManagement
 
             LevelPixelData source = AssetDatabase.LoadAssetAtPath<LevelPixelData>(path);
             if (source == null)
-            {
                 return;
-            }
 
             ApplyPixelBake(source.Pixels, source.TextureSize);
             EditorUtility.SetDirty(this);
@@ -1629,9 +1519,7 @@ namespace LevelManagement
                 pixelSelection = element;
 
                 if (Event.current.alt)
-                {
                     pixelPaintColor = element.Color;
-                }
                 else
                 {
                     Color32 paint = pixelPaintColor;
@@ -2045,7 +1933,6 @@ namespace LevelManagement
 
         [SerializeField]
         [FoldoutGroup("Plate")]
-        [Tooltip("Level basina conveyor tabak (plate) sayisi. Kuyrukta dik dizilir.")]
         [MinValue(1)]
         [FormerlySerializedAs("m_PlateCount")]
         private int plateCount = 5;

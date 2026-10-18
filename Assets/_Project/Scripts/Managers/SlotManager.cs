@@ -7,6 +7,8 @@ using Zenject;
 
 public class SlotManager : MonoBehaviour
 {
+    private const int MaxSlotCount = 7;
+
     public event Action OnShooterAreaStuck;
 
     [Inject] private Slot.Factory slotFactory;
@@ -19,14 +21,11 @@ public class SlotManager : MonoBehaviour
 
     private List<Shooter> shooters;
     private List<Shooter> waitingShooters;
-    private bool halted;
+    private bool stopped;
 
-    public bool IsHalted => halted;
+    public bool IsHalted => stopped;
 
-    public void Halt()
-    {
-        halted = true;
-    }
+    public void Stop() => stopped = true;
 
     public int ShooterCount => shooters != null ? shooters.Count : 0;
     public int OccupantCount => shooters != null ? shooters.Count : 0;
@@ -52,15 +51,9 @@ public class SlotManager : MonoBehaviour
         return free - queued;
     }
 
-    public Shooter GetOccupant(int index)
-    {
-        return shooters[index];
-    }
+    public Shooter GetOccupant(int index) => shooters[index];
 
-    public Shooter GetQueued(int index)
-    {
-        return waitingShooters[index];
-    }
+    public Shooter GetQueued(int index) => waitingShooters[index];
 
     public void Construct(LevelData levelData)
     {
@@ -68,23 +61,23 @@ public class SlotManager : MonoBehaviour
         shooters = new List<Shooter>();
         slotData = levelData.SlotData;
         slotCount = slotData.Count;
+
         CreateSlot();
     }
 
     private void Update()
     {
-        if (halted)
+        if (stopped)
             return;
 
         if (waitingShooters.Count <= 0)
             return;
 
         bool placed = PlaceShooter(waitingShooters[0]);
+
         if (placed)
             waitingShooters.RemoveAt(0);
     }
-
-    private const int MaxSlotCount = 7;
 
     private int GetSlotCountFromEnum(SlotCount count)
     {
@@ -122,6 +115,7 @@ public class SlotManager : MonoBehaviour
     private List<Slot> FindUnlockedSlots()
     {
         List<Slot> availableSlots = new List<Slot>();
+
         foreach (Slot slot in slots)
         {
             if (!slot.IsLocked)
@@ -151,17 +145,22 @@ public class SlotManager : MonoBehaviour
         {
             for (int i = 0; i < slots.Count; i++)
                 slots[i].SetLocked(slotData.LockedByIndex[i]);
+
             return;
         }
 
         switch (slotCount)
         {
             case SlotCount.Five:
+
                 slots[0].SetLocked(true);
                 slots[^1].SetLocked(true);
+
                 break;
             case SlotCount.Six:
+
                 slots[0].SetLocked(true);
+
                 break;
             case SlotCount.Seven:
                 break;
@@ -186,6 +185,7 @@ public class SlotManager : MonoBehaviour
     private bool PlaceShooter(Shooter shooter)
     {
         Slot slot = GetAvailableSlot();
+
         if (slot == null)
             return false;
 
@@ -194,6 +194,7 @@ public class SlotManager : MonoBehaviour
 
         slot.SetFull(true);
         shooter.DepartFromSlot(slot);
+
         return true;
     }
 

@@ -103,3 +103,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4169699de9d200c47b479677fa0a4454, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  bulletRenderer: {fileID: 100004}
+  flightDuration: 0.15

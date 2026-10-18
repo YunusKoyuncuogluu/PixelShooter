@@ -18,9 +18,7 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
 
     private void InstallSettings()
     {
-        Container.Bind<ProjectSettings>()
-            .FromScriptableObjectResource(ProjectSettings.ResourcePath)
-            .AsSingle();
+        Container.Bind<ProjectSettings>().FromScriptableObjectResource(ProjectSettings.ResourcePath).AsSingle();
     }
 
     private void InstallManagers()

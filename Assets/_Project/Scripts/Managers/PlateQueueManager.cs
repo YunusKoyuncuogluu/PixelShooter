@@ -33,6 +33,8 @@ public class PlateQueueManager : MonoBehaviour
     private CancellationTokenSource lifeCts;
     private bool isBoardingBusy;
     private int maxPlateCount;
+    public bool HasAvailablePlate => queuedPlates.Count > 0 && !isBoardingBusy;
+
 
     private void Awake()
     {
@@ -42,16 +44,12 @@ public class PlateQueueManager : MonoBehaviour
     private void EnsurePlatesRoot()
     {
         if (platesRoot != null)
-        {
             return;
-        }
 
         GameObject rootObject = new GameObject("Plates");
         platesRoot = rootObject.transform;
         platesRoot.SetParent(transform, false);
     }
-
-    public bool HasAvailablePlate => queuedPlates.Count > 0 && !isBoardingBusy;
 
     public Plate GetBoundPlate(ShooterController shooterController)
     {
@@ -113,8 +111,8 @@ public class PlateQueueManager : MonoBehaviour
 
             Shooter shooter = shooterController.GetComponent<Shooter>();
             float travelSpeed = shooter != null ? shooter.PlateTravelSpeed : 20f;
-            float travelArc = plate.RollTravelArcHeight();
-            UniTask deployTask = plate.AnimateDeployFlatAsync(flatPos, flatRot, linked);
+            float travelArc = plate.RandomTravelArcHeight();
+            UniTask deployTask = plate.DeployFlatAsync(flatPos, flatRot, linked);
             UniTask slideTask = SlideQueueForwardAsync(linked);
             UniTask travelTask = shooterController.gameObject.FollowToAsync(
                 objectPool,
@@ -169,7 +167,7 @@ public class PlateQueueManager : MonoBehaviour
             return;
         }
 
-        plate.RecycleHide();
+        plate.HideAtHome();
     }
 
     public void GetConveyorStartPose(Plate settingsSource, out Vector3 position, out Quaternion rotation)
@@ -206,6 +204,7 @@ public class PlateQueueManager : MonoBehaviour
             position = boardingAnchor.position;
             position.y += yOffset;
             rotation = boardingAnchor.rotation * Quaternion.Euler(flatEuler);
+
             return;
         }
 
@@ -225,7 +224,7 @@ public class PlateQueueManager : MonoBehaviour
         {
             Plate plate = queuedPlates[i];
             GetQueuePose(i, plate, out Vector3 pos, out Quaternion rot);
-            slideTasksBuffer.Add(plate.AnimateSlideAsync(pos, rot, cancellationToken));
+            slideTasksBuffer.Add(plate.SlideToQueueAsync(pos, rot, cancellationToken));
         }
 
         await UniTask.WhenAll(slideTasksBuffer);
@@ -328,29 +327,25 @@ public class PlateQueueManager : MonoBehaviour
     private void ClearAll()
     {
         for (int i = 0; i < queuedPlates.Count; i++)
-        {
             ReleasePlate(queuedPlates[i]);
-        }
 
         for (int i = 0; i < activePlates.Count; i++)
-        {
             ReleasePlate(activePlates[i]);
-        }
 
         queuedPlates.Clear();
         activePlates.Clear();
         boundByShooter.Clear();
+
         isBoardingBusy = false;
         maxPlateCount = 0;
+
         RefreshPlateCountText();
     }
 
     private void RefreshPlateCountText()
     {
         if (plateCountText == null)
-        {
             return;
-        }
 
         int length = WritePlateCount(queuedPlates.Count, maxPlateCount);
         plateCountText.SetCharArray(plateCountBuffer, 0, length);
@@ -361,18 +356,18 @@ public class PlateQueueManager : MonoBehaviour
         int length = WriteNonNegative(0, waiting);
         plateCountBuffer[length] = '/';
         length++;
+
         return WriteNonNegative(length, max);
     }
 
     private int WriteNonNegative(int start, int value)
     {
         if (value < 0)
-        {
             value = 0;
-        }
 
         int digits = 1;
         int probe = value;
+
         while (probe >= 10)
         {
             probe /= 10;
@@ -393,9 +388,7 @@ public class PlateQueueManager : MonoBehaviour
     private void ReleasePlate(Plate plate)
     {
         if (plate == null)
-        {
             return;
-        }
 
         SplineExtensions.ClearExistingFollowers(plate.gameObject, objectPool);
         Destroy(plate.gameObject);

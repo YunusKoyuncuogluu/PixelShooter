@@ -72,9 +72,7 @@ public class ImageManager
         BuildShooterColorLookup();
 
         if (levelData == null || levelData.PixelGrid == null)
-        {
             return;
-        }
 
         Vector2Int size = levelData.PixelSize;
         gridWidth = size.x > 0 ? size.x : 1;
@@ -127,7 +125,7 @@ public class ImageManager
         ApplyLevelPaletteSwatches();
 
         if (imageGridRenderer != null)
-            imageGridRenderer.RetintToPalette(shooterLevels, shooterColorsByLevel, shooterColorCount);
+            imageGridRenderer.ApplyPaletteColors(shooterLevels, shooterColorsByLevel, shooterColorCount);
 
     }
 
@@ -151,6 +149,7 @@ public class ImageManager
 
         ApproachSide approach = ResolveApproachSide(shooterWorldPos.x, shooterWorldPos.z);
         side = (int)approach;
+
         lane = ResolvePreferredLane(shooterWorldPos, approach);
         if (side == previousSide && lane == previousLane)
             return false;
@@ -184,7 +183,7 @@ public class ImageManager
         if (opaqueRemaining == 0)
         {
             if (imageGridRenderer != null)
-                imageGridRenderer.HideRemainingImmediate();
+                imageGridRenderer.HideAllPixels();
             OnImageCleared?.Invoke();
         }
     }
@@ -238,6 +237,35 @@ public class ImageManager
         for (int i = 0; i < count; i++)
         {
             if (paletteIds[i] == targetPaletteId && !reserved[i])
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool HasClaimablePixel(short targetPaletteId)
+    {
+        if (!isBuilt || paletteIds == null || targetPaletteId <= 0)
+            return false;
+
+        if (gridWidth < 1 || gridHeight < 1)
+            return false;
+
+        for (int lane = 0; lane < gridWidth; lane++)
+        {
+            if (TryGetFrontierPixelOnLane(ApproachSide.Bottom, lane, targetPaletteId, out _, out _))
+                return true;
+
+            if (TryGetFrontierPixelOnLane(ApproachSide.Top, lane, targetPaletteId, out _, out _))
+                return true;
+        }
+
+        for (int lane = 0; lane < gridHeight; lane++)
+        {
+            if (TryGetFrontierPixelOnLane(ApproachSide.Left, lane, targetPaletteId, out _, out _))
+                return true;
+
+            if (TryGetFrontierPixelOnLane(ApproachSide.Right, lane, targetPaletteId, out _, out _))
                 return true;
         }
 
@@ -332,6 +360,7 @@ public class ImageManager
     private int ResolvePreferredLane(Vector3 shooterWorldPos, ApproachSide side)
     {
         ProjectShooterToGrid(shooterWorldPos, out int col, out int row);
+
         return side == ApproachSide.Bottom || side == ApproachSide.Top ? col : row;
     }
 

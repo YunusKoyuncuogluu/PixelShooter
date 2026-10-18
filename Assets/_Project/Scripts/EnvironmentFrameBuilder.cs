@@ -5,12 +5,12 @@ public class EnvironmentFrameBuilder : MonoBehaviour
     private const float MinPanelSize = 0.001f;
     private const float DefaultCellHalfExtent = 0.5f;
 
-    [Header("Panels (mevcut cube Transform'lari)")]
+    [Header("Panels")]
     [SerializeField] private Transform leftPanel;
     [SerializeField] private Transform rightPanel;
     [SerializeField] private Transform bottomPanel;
 
-    [Header("Padding (grid kenarina gore, world)")]
+    [Header("Padding")]
     [SerializeField] private float paddingLeft = 1.5f;
     [SerializeField] private float paddingRight = 1.5f;
     [SerializeField] private float paddingBottom = 1.5f;
@@ -24,14 +24,10 @@ public class EnvironmentFrameBuilder : MonoBehaviour
     public void Rebuild(CellManager cellManager)
     {
         if (cellManager == null || cellManager.Cells == null)
-        {
             return;
-        }
 
         if (leftPanel == null || rightPanel == null || bottomPanel == null)
-        {
             return;
-        }
 
         if (!TryGetGridBounds(cellManager, out float gridLeft, out float gridRight, out float gridBottom, out float gridTop))
             return;
@@ -60,6 +56,7 @@ public class EnvironmentFrameBuilder : MonoBehaviour
 
         int width = cellManager.Width;
         int height = cellManager.Height;
+
         if (width <= 0 || height <= 0)
             return false;
 
@@ -73,6 +70,7 @@ public class EnvironmentFrameBuilder : MonoBehaviour
         gridRight = bottomRight.x + half;
         gridBottom = bottomLeft.z - half;
         gridTop = topLeft.z + half;
+
         return true;
     }
 
@@ -80,6 +78,7 @@ public class EnvironmentFrameBuilder : MonoBehaviour
     {
         float width = gridLeft - outerLeft;
         float depth = outerTop - outerBottom;
+
         if (width <= MinPanelSize || depth <= MinPanelSize)
             return;
 
@@ -92,6 +91,7 @@ public class EnvironmentFrameBuilder : MonoBehaviour
     {
         float width = outerRight - gridRight;
         float depth = outerTop - outerBottom;
+
         if (width <= MinPanelSize || depth <= MinPanelSize)
             return;
 

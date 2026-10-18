@@ -99,8 +99,8 @@ Material:
     - _RampBandsSmoothing: 0.1
     - _RampOffset: 0
     - _RampScale: 1
-    - _RampSmoothing: 0.238
-    - _RampThreshold: 0.817
+    - _RampSmoothing: 0.243
+    - _RampThreshold: 0.868
     - _RampType: 0
     - _ReceiveShadowsOff: 0
     - _ReflectionMapType: 0
@@ -134,12 +134,12 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0.8679245, g: 0.3739171, b: 0.7435139, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _HColor: {r: 1, g: 1, b: 1, a: 1}
+    - _HColor: {r: 0.899371, g: 0.899371, b: 0.899371, a: 1}
     - _MatCapColor: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
     - _ReflectionColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 0.8, g: 0.8, b: 0.8, a: 0.5}
-    - _SColor: {r: 0.69182384, g: 0.69182384, b: 0.69182384, a: 1}
+    - _SColor: {r: 0.52201253, g: 0.52201253, b: 0.52201253, a: 1}
     - _SpecularColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -49135,6 +49135,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f86ebffdb2a574fa7bf35f2bdae0719b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PixelShooter.UI.UICompleted
+  basePageTransform: {fileID: 3203636679207149805}
   confettis:
   - {fileID: 8368068029912842067}
   - {fileID: 6430414682439187242}

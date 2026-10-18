@@ -5,28 +5,17 @@ using UnityEngine;
 
 public class Projectile : MonoBehaviour, IPoolObject
 {
-    private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-    private static readonly int ColorId = Shader.PropertyToID("_Color");
+    private readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    private readonly int ColorId = Shader.PropertyToID("_Color");
 
-    private Renderer cachedRenderer;
+    [SerializeField] private Renderer bulletRenderer;
+    [SerializeField] private float flightDuration = 0.12f;
+
     private MaterialPropertyBlock propertyBlock;
 
     private void Awake()
     {
-        Prepare();
-    }
-
-    public void Prepare()
-    {
-        if (cachedRenderer == null)
-        {
-            cachedRenderer = GetComponent<Renderer>();
-        }
-
-        if (propertyBlock == null)
-        {
-            propertyBlock = new MaterialPropertyBlock();
-        }
+        propertyBlock = new MaterialPropertyBlock();
     }
 
     public void Reset()
@@ -36,30 +25,27 @@ public class Projectile : MonoBehaviour, IPoolObject
 
     public void SetColor(Color color)
     {
-        if (cachedRenderer == null || propertyBlock == null)
+        if (bulletRenderer == null || propertyBlock == null)
             return;
 
         propertyBlock.Clear();
         propertyBlock.SetColor(BaseColorId, color);
         propertyBlock.SetColor(ColorId, color);
-        cachedRenderer.SetPropertyBlock(propertyBlock);
+        bulletRenderer.SetPropertyBlock(propertyBlock);
     }
 
-    public async UniTask FlyAsync(Vector3 start, Vector3 target, CancellationToken cancellationToken)
+    public async UniTask FlyToTarget(Vector3 start, Vector3 target, CancellationToken cancellationToken)
     {
         transform.position = start;
         gameObject.SetActive(true);
 
-        const float safeDuration = 0.12f;
         float elapsed = 0f;
 
-        while (elapsed < safeDuration)
+        while (elapsed < flightDuration)
         {
             cancellationToken.ThrowIfCancellationRequested();
             elapsed += Time.deltaTime;
-            float progress = elapsed / safeDuration;
-            if (progress > 1f)
-                progress = 1f;
+            float progress = Mathf.Clamp01(elapsed / flightDuration);
 
             transform.position = Vector3.LerpUnclamped(start, target, progress);
 
@@ -67,13 +53,14 @@ public class Projectile : MonoBehaviour, IPoolObject
             if (direction.sqrMagnitude > 0.0001f)
                 transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
 
-            await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+            await UniTask.Yield(PlayerLoopTiming.Update);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         transform.position = target;
     }
 
-    public void Hide()
+    private void Hide()
     {
         gameObject.SetActive(false);
     }

@@ -11,7 +11,8 @@ namespace PixelShooter.UI
     {
         public Action OnClose;
 
-        protected Transform popupTransform;
+        [SerializeField] protected Transform popupTransform;
+        [SerializeField] protected Transform backgroundTransform;
         protected Image backgroundImage;
         protected CanvasScaler canvasScaler;
         protected UIManager uiManager;
@@ -24,26 +25,16 @@ namespace PixelShooter.UI
 
         protected virtual void Awake()
         {
-            popupTransform = transform.Find("Popup");
             if (popupTransform != null)
-            {
                 popupTransform.localScale = Vector3.zero;
-            }
 
-            Transform background = transform.Find("Background");
-            if (background != null)
-            {
-                backgroundImage = background.GetComponent<Image>();
-            }
-
+            backgroundImage = backgroundTransform.GetComponent<Image>();
             canvasScaler = GetComponent<CanvasScaler>();
             if (canvasScaler != null)
             {
                 float aspect = (float)Screen.height / Screen.width;
                 if (aspect < 1.6f)
-                {
                     canvasScaler.matchWidthOrHeight = 0.5f;
-                }
             }
         }
 
@@ -56,9 +47,7 @@ namespace PixelShooter.UI
             }
 
             if (popupTransform == null)
-            {
                 return;
-            }
 
             popupTransform.DOScale(Vector3.one * 1.1f, 0.2f).SetEase(Ease.OutFlash).SetUpdate(true)
                 .OnComplete(() => { popupTransform.DOScale(Vector3.one, 0.1f).SetUpdate(true); });
@@ -72,9 +61,7 @@ namespace PixelShooter.UI
         protected virtual void Close()
         {
             if (backgroundImage != null)
-            {
                 backgroundImage.DOFade(0f, 0.2f).SetUpdate(true);
-            }
 
             if (popupTransform == null)
             {
@@ -89,9 +76,7 @@ namespace PixelShooter.UI
         {
             OnClose?.Invoke();
             if (uiManager != null)
-            {
                 uiManager.NotifyPopupClosed();
-            }
 
             Destroy(gameObject);
         }

@@ -38,7 +38,6 @@ public class Plate : MonoBehaviour
     [Inject] private ObjectPool objectPool;
     private Tween activeTween;
     private SplineFollower cachedFollower;
-    private bool hasPassenger;
 
     public Transform SeatPoint => seatPoint != null ? seatPoint : cachedTransform;
 
@@ -54,16 +53,16 @@ public class Plate : MonoBehaviour
     public float DeployTravelSpeed => Mathf.Max(0.01f, deployTravelSpeed);
     public float DeployArcHeight => Mathf.Max(0f, deployArcHeight);
 
-    public float RollTravelArcHeight()
-    {
-        float min = Mathf.Max(0f, travelArcHeightMin);
-        float max = Mathf.Max(min, travelArcHeightMax);
-        return Random.Range(min, max);
-    }
-
     private void Awake()
     {
         cachedTransform = transform;
+    }
+    public float RandomTravelArcHeight()
+    {
+        float min = Mathf.Max(0f, travelArcHeightMin);
+        float max = Mathf.Max(min, travelArcHeightMax);
+
+        return Random.Range(min, max);
     }
 
     public Vector3 PredictSeatWorldPosition(Vector3 flatWorldPosition, Quaternion flatWorldRotation)
@@ -92,10 +91,37 @@ public class Plate : MonoBehaviour
 
         KillTween();
         DetachFollower();
-        hasPassenger = false;
         AttachHome();
         gameObject.SetActive(true);
+        await FlyArcAsync(worldPosition, worldRotation, this.GetCancellationTokenOnDestroy());
+    }
 
+    public void PlaceInQueue(Vector3 worldPosition, Quaternion worldRotation)
+    {
+        KillTween();
+        DetachFollower();
+        AttachHome();
+        cachedTransform.position = worldPosition;
+        cachedTransform.rotation = worldRotation;
+        gameObject.SetActive(true);
+    }
+
+    public async UniTask DeployFlatAsync(
+        Vector3 flatWorldPosition,
+        Quaternion flatWorldRotation,
+        CancellationToken cancellationToken)
+    {
+        KillTween();
+        DetachFollower();
+
+        await FlyArcAsync(flatWorldPosition, flatWorldRotation, cancellationToken);
+    }
+
+    private async UniTask FlyArcAsync(
+        Vector3 worldPosition,
+        Quaternion worldRotation,
+        CancellationToken cancellationToken)
+    {
         Quaternion startRotation = cachedTransform.rotation;
         await gameObject.FollowToAsync(
             objectPool,
@@ -107,51 +133,15 @@ public class Plate : MonoBehaviour
                 if (cachedTransform != null)
                     cachedTransform.rotation = Quaternion.Slerp(startRotation, worldRotation, progress);
             },
-            this.GetCancellationTokenOnDestroy());
+            cancellationToken);
 
         if (cachedTransform == null)
             return;
 
-        cachedTransform.position = worldPosition;
-        cachedTransform.rotation = worldRotation;
+        cachedTransform.SetPositionAndRotation(worldPosition, worldRotation);
     }
 
-    public void PlaceInQueue(Vector3 worldPosition, Quaternion worldRotation)
-    {
-        KillTween();
-        DetachFollower();
-        hasPassenger = false;
-        AttachHome();
-        cachedTransform.position = worldPosition;
-        cachedTransform.rotation = worldRotation;
-        gameObject.SetActive(true);
-    }
-
-    public async UniTask AnimateDeployFlatAsync(
-        Vector3 flatWorldPosition,
-        Quaternion flatWorldRotation,
-        CancellationToken cancellationToken)
-    {
-        KillTween();
-        DetachFollower();
-
-        Quaternion startRot = cachedTransform.rotation;
-        await gameObject.FollowToAsync(
-            objectPool,
-            flatWorldPosition,
-            DeployTravelSpeed,
-            DeployArcHeight,
-            progress =>
-            {
-                cachedTransform.rotation = Quaternion.Slerp(startRot, flatWorldRotation, progress);
-            },
-            cancellationToken);
-
-        cachedTransform.position = flatWorldPosition;
-        cachedTransform.rotation = flatWorldRotation;
-    }
-
-    public async UniTask AnimateSlideAsync(
+    public async UniTask SlideToQueueAsync(
         Vector3 worldPosition,
         Quaternion worldRotation,
         CancellationToken cancellationToken)
@@ -187,23 +177,21 @@ public class Plate : MonoBehaviour
         Quaternion keptRotation = passenger.rotation;
         passenger.SetParent(SeatPoint, true);
         passenger.rotation = keptRotation;
-        hasPassenger = true;
     }
 
     public void ClearPassenger(Transform passenger)
     {
         if (passenger != null && passenger.parent == SeatPoint)
             passenger.SetParent(null, true);
-
-        hasPassenger = false;
     }
 
-    public SplineFollower EnsureFollower()
+    public SplineFollower GetTravelFollower()
     {
         if (cachedFollower == null)
             cachedFollower = GetComponent<SplineFollower>();
         if (cachedFollower == null)
             cachedFollower = gameObject.AddComponent<SplineFollower>();
+
         return cachedFollower;
     }
 
@@ -220,11 +208,10 @@ public class Plate : MonoBehaviour
         cachedFollower = null;
     }
 
-    public void RecycleHide()
+    public void HideAtHome()
     {
         KillTween();
         DetachFollower();
-        hasPassenger = false;
         AttachHome();
         gameObject.SetActive(false);
     }
@@ -232,14 +219,10 @@ public class Plate : MonoBehaviour
     private void AttachHome()
     {
         if (cachedTransform == null)
-        {
             cachedTransform = transform;
-        }
 
         if (homeRoot == null || cachedTransform.parent == homeRoot)
-        {
             return;
-        }
 
         cachedTransform.SetParent(homeRoot, true);
     }

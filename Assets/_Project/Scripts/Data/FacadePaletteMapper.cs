@@ -131,10 +131,12 @@ public class FacadePaletteMapper
 
         List<Color32> distinct = new List<Color32>(8);
         List<int> distinctCounts = new List<int>(8);
+
         for (int i = 0; i < pixels.Count; i++)
         {
             Color32 color = pixels[i].color;
             int slot = -1;
+
             for (int c = 0; c < distinct.Count; c++)
             {
                 if (distinct[c].r != color.r || distinct[c].g != color.g || distinct[c].b != color.b)
@@ -149,9 +151,7 @@ public class FacadePaletteMapper
                 distinctCounts.Add(1);
             }
             else
-            {
                 distinctCounts[slot]++;
-            }
         }
 
         for (int a = 0; a < distinct.Count - 1; a++)
@@ -172,6 +172,7 @@ public class FacadePaletteMapper
 
         bool[] used = new bool[count];
         short[] assigned = new short[distinct.Count];
+
         for (int c = 0; c < distinct.Count; c++)
             assigned[c] = ResolveUnusedLevel(distinct[c], used);
 
@@ -183,7 +184,9 @@ public class FacadePaletteMapper
             {
                 if (distinct[c].r != pixel.color.r || distinct[c].g != pixel.color.g || distinct[c].b != pixel.color.b)
                     continue;
+
                 level = assigned[c];
+
                 break;
             }
 
@@ -209,6 +212,7 @@ public class FacadePaletteMapper
         for (int i = 0; i < count; i++)
         {
             float score = ScoreColor(color, h, s, v, useHue, i);
+
             if (score < reuseScore)
             {
                 reuseScore = score;
@@ -224,6 +228,7 @@ public class FacadePaletteMapper
 
         int chosen = bestIndex >= 0 ? bestIndex : reuseIndex;
         used[chosen] = true;
+
         return levels[chosen];
     }
 
@@ -247,6 +252,7 @@ public class FacadePaletteMapper
     private float HueDistance01(float a, float b)
     {
         float d = Mathf.Abs(a - b);
+
         if (d > 0.5f)
             d = 1f - d;
         return d;

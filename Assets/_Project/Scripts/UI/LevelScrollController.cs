@@ -132,27 +132,21 @@ namespace PixelShooter.UI
             introPlaying = false;
 
             if (panelRect != null)
-            {
                 panelRect.anchoredPosition = introEndPosition;
-            }
 
             if (scrollRect != null)
-            {
                 scrollRect.enabled = true;
-            }
 
-            Canvas.ForceUpdateCanvases();
             ShowSelectedLevel();
         }
 
         private void ShowSelectedLevel()
         {
             if (!ready || scrollRect == null || scrollRect.viewport == null)
-            {
                 return;
-            }
 
             float viewHeight = scrollRect.viewport.rect.height;
+
             if (viewHeight <= 0f)
             {
                 focused = false;
@@ -160,9 +154,7 @@ namespace PixelShooter.UI
             }
 
             for (int i = 0; i < PoolSize; i++)
-            {
                 shownLevels[i] = 0;
-            }
 
             FocusSelected(viewHeight);
             RefreshWindow(viewHeight);
@@ -279,6 +271,7 @@ namespace PixelShooter.UI
             {
                 int level = first + i;
                 int slot = (level - 1) % PoolSize;
+
                 if (shownLevels[slot] == level)
                     continue;
 
@@ -286,6 +279,7 @@ namespace PixelShooter.UI
                 RectTransform rect = nodeRects[slot];
                 float targetY = NodeAnchoredY(rect, level, viewHeight);
                 Vector2 anchored = rect.anchoredPosition;
+
                 if (anchored.y != targetY)
                 {
                     anchored.x = 0f;
@@ -319,6 +313,7 @@ namespace PixelShooter.UI
             float centerY = (level - 1) * rowStep;
             float pivotY = centerY + (node.pivot.y - 0.5f) * itemHeight;
             float anchorY = (-content.pivot.y + node.anchorMin.y) * contentHeight;
+
             return pivotY - anchorY;
         }
 

@@ -31,32 +31,50 @@ namespace PixelShooter.Pooling
 
         public AudioClip Clip
         {
-            get { return clip; }
+            get
+            {
+                return clip;
+            }
         }
 
         public float Volume
         {
-            get { return volume; }
+            get
+            {
+                return volume;
+            }
         }
 
         public int MaxVoices
         {
-            get { return maxVoices; }
+            get
+            {
+                return maxVoices;
+            }
         }
 
         public float MinRepeatInterval
         {
-            get { return minRepeatInterval; }
+            get
+            {
+                return minRepeatInterval;
+            }
         }
 
         public float PitchMin
         {
-            get { return pitchMin; }
+            get
+            {
+                return pitchMin;
+            }
         }
 
         public float PitchMax
         {
-            get { return pitchMax; }
+            get
+            {
+                return pitchMax;
+            }
         }
     }
 }

@@ -51,27 +51,19 @@ namespace PixelShooter.UI
             Time.timeScale = 1f;
             Close();
             if (uiManager != null)
-            {
                 uiManager.GoHome();
-            }
         }
 
         private void UpdateButtonSprites()
         {
             if (buttonSprites == null || buttonSprites.Length < 2 || settingsProvider == null)
-            {
                 return;
-            }
 
             if (soundButtonImage != null)
-            {
                 soundButtonImage.sprite = buttonSprites[settingsProvider.IsSoundEnabled ? 1 : 0];
-            }
 
             if (hapticButtonImage != null)
-            {
                 hapticButtonImage.sprite = buttonSprites[settingsProvider.IsVibrationEnabled ? 1 : 0];
-            }
         }
     }
 }

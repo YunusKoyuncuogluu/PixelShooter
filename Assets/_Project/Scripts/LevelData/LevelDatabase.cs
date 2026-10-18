@@ -23,16 +23,14 @@ namespace LevelManagement
         public LevelData GetLevelData(int levelNumber)
         {
             int count = Count;
+
             if (count == 0)
-            {
                 return null;
-            }
 
             int index = (levelNumber - 1) % count;
+
             if (index < 0)
-            {
                 index += count;
-            }
 
             return levels[index];
         }

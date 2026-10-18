@@ -31,6 +31,7 @@ public class PathFinding
         {
             path.Add(start);
             isExitFound = true;
+
             return path;
         }
 
@@ -51,8 +52,10 @@ public class PathFinding
             for (int i = 0; i < directions.Length; i++)
             {
                 Vector2Int next = current + directions[i];
+
                 if (next.x < 0 || next.x >= this.width || next.y < 0 || next.y >= this.height)
                     continue;
+
                 if (this.cells[next.x, next.y].BlocksPath || visited[next.x, next.y])
                     continue;
 
@@ -79,6 +82,7 @@ public class PathFinding
         }
 
         Vector2Int walk = exitPoint;
+
         while (!walk.Equals(start))
         {
             path.Add(walk);
@@ -88,6 +92,7 @@ public class PathFinding
         path.Add(start);
         path.Reverse();
         isExitFound = true;
+
         return path;
     }
 }

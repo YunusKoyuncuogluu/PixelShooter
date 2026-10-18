@@ -69,6 +69,7 @@ namespace PixelShooter.Game
 
             active = false;
             rampElapsed = 0f;
+
             if (levelFlowController == null || !levelFlowController.IsResultShown)
                 Time.timeScale = 1f;
         }
@@ -82,6 +83,7 @@ namespace PixelShooter.Game
         {
             active = true;
             rampElapsed = 0f;
+
             if (playerController != null)
                 playerController.SetActive(false);
 
@@ -106,15 +108,18 @@ namespace PixelShooter.Game
         private bool IsGuaranteed()
         {
             ConveyorManager conveyor = conveyorManager.Value;
+
             if (conveyor == null || imageManager == null || imageManager.IsImageCleared())
                 return false;
 
             int total = imageManager.CountUnreservedPixels(pixelCounts);
+
             if (total < 0)
                 return false;
 
             ClearAmmo();
             AddConveyorAmmo(conveyor);
+
             bool beltCovers = conveyor.ActiveShooterCount > 0 && CoversPixels();
 
             bool tunnelsPending = tunnelManager != null && tunnelManager.HasPendingShooters();
@@ -141,8 +146,10 @@ namespace PixelShooter.Game
                 return false;
 
             int committed = conveyor.ActiveShooterCount;
+
             if (slotManager != null)
                 committed += slotManager.OccupantCount + slotManager.QueuedCount;
+
             if (committed <= 0)
                 return false;
 
@@ -160,7 +167,12 @@ namespace PixelShooter.Game
         {
             int shooterCount = conveyor.ActiveShooterCount;
             for (int i = 0; i < shooterCount; i++)
-                AddControllerAmmo(conveyor.GetActiveShooter(i));
+            {
+                ShooterController controller = conveyor.GetActiveShooter(i);
+                Shooter shooter = controller != null ? controller.GetComponent<Shooter>() : null;
+                GeneralColor fallback = shooter != null ? shooter.Color : GeneralColor.None;
+                AddControllerAmmo(controller, fallback);
+            }
         }
 
         private void AddOccupantAmmo(int count, bool occupants)
@@ -168,20 +180,24 @@ namespace PixelShooter.Game
             for (int i = 0; i < count; i++)
             {
                 Shooter shooter = occupants ? slotManager.GetOccupant(i) : slotManager.GetQueued(i);
+
                 if (shooter == null)
                     continue;
 
-                AddControllerAmmo(shooter.GetComponent<ShooterController>());
+                AddControllerAmmo(shooter.GetComponent<ShooterController>(), shooter.Color);
             }
         }
 
-        private void AddControllerAmmo(ShooterController shooter)
+        private void AddControllerAmmo(ShooterController shooter, GeneralColor fallbackColor)
         {
             if (shooter == null)
                 return;
 
             int shots = shooter.RemainingShots;
             int paletteId = shooter.PaletteId;
+            if (paletteId <= 0 && imageManager != null)
+                paletteId = imageManager.ResolvePaletteId(fallbackColor);
+
             if (shots <= 0 || paletteId <= 0 || paletteId >= ammoCounts.Length)
                 return;
 
@@ -191,6 +207,7 @@ namespace PixelShooter.Game
         private bool CoversPixels()
         {
             int bucketCount = ammoCounts.Length;
+
             for (int i = 0; i < bucketCount; i++)
             {
                 if (pixelCounts[i] > ammoCounts[i])
@@ -209,12 +226,14 @@ namespace PixelShooter.Game
                 for (int x = 0; x < gridWidth; x++)
                 {
                     Shooter shooter = shooterManager.ShooterAt(new Vector2Int(x, y));
+
                     if (shooter == null)
                         continue;
 
                     ShooterController controller = shooter.GetComponent<ShooterController>();
                     int shots = controller != null ? controller.RemainingShots : 0;
                     int paletteId = imageManager.ResolvePaletteId(shooter.Color);
+
                     if (shots <= 0 || paletteId <= 0 || paletteId >= ammoCounts.Length)
                         continue;
 
@@ -233,6 +252,7 @@ namespace PixelShooter.Game
 
             int room = slotManager.CountFreeSlots();
             int gridCount = shooterManager.CountGridShooters();
+
             if (gridCount <= 0 || gridCount + SlotReserve > room)
                 return;
 
@@ -245,19 +265,25 @@ namespace PixelShooter.Game
                 return;
 
             int count = slotManager.OccupantCount;
+
             for (int i = 0; i < count; i++)
             {
                 Shooter shooter = slotManager.GetOccupant(i);
-                if (shooter == null || !shooter.IsWaitingInSlot || shooter.IsBusy)
+                if (shooter == null || !shooter.IsHeldInSlot)
                     continue;
 
                 ShooterController controller = shooter.GetComponent<ShooterController>();
                 if (controller == null || controller.RemainingShots <= 0)
                     continue;
 
-                if (!imageManager.HasRemainingPixelsOfPaletteId(controller.PaletteId))
+                short paletteId = controller.PaletteId;
+                if (paletteId <= 0)
+                    paletteId = imageManager.ResolvePaletteId(shooter.Color);
+
+                if (!imageManager.HasClaimablePixel(paletteId))
                     continue;
 
+                controller.BindPalette(shooter.Color);
                 shooter.ContinueFromSlot();
             }
         }

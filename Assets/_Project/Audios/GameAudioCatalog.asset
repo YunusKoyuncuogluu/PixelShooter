@@ -29,7 +29,7 @@ MonoBehaviour:
     pitchMax: 2
   levelWin:
     clip: {fileID: 8300000, guid: f5cce50d36a5f42709e3fac4ccc19092, type: 3}
-    volume: 0.3
+    volume: 0.2
     maxVoices: 1
     minRepeatInterval: 0
     pitchMin: 1

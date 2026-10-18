@@ -110,6 +110,7 @@ public class Tunnel : MonoBehaviour
         shooter.SetCoordinate(exitCoordinate);
         shooterData.RemoveAt(0);
         shooter.SetTunnelShooter(true);
+
         MoveShooterToExit(shooter);
     }
 

@@ -10,20 +10,20 @@ public class TunnelData
     [SerializeField] private List<ShooterData> shooters;
     public List<ShooterData> Shooters => shooters;
 
-    public static TunnelData CreateDefault()
+    public void InitializeDefault()
     {
-        TunnelData data = new TunnelData();
-        data.shooters = new List<ShooterData>
+        shooters = new List<ShooterData>
         {
             new ShooterData(GeneralColor.Red, false, Vector2Int.zero, Vector3.zero)
         };
-        return data;
     }
 
     public void EnsureShooters()
     {
         if (shooters == null)
+        {
             shooters = new List<ShooterData>();
+        }
     }
 
     public void SetShooters(List<ShooterData> value)

@@ -37,7 +37,7 @@ namespace PixelShooter.Settings
         {
             soundEnabled = value;
             saveManager.Data.soundEnabled = value;
-            saveManager.CommitToDisk();
+            saveManager.SaveToDisk();
             ApplySound();
         }
 
@@ -45,15 +45,13 @@ namespace PixelShooter.Settings
         {
             vibrationEnabled = value;
             saveManager.Data.vibrationEnabled = value;
-            saveManager.CommitToDisk();
+            saveManager.SaveToDisk();
         }
 
         private void ApplySound()
         {
             if (masterMixer == null)
-            {
                 return;
-            }
 
             float volume = soundEnabled ? AudibleDecibels : MutedDecibels;
             masterMixer.SetFloat(MasterVolumeParameter, volume);

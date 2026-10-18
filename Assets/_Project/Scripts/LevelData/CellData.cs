@@ -121,10 +121,12 @@ namespace Grids
         private int GetFacadePropertyCount()
         {
             ProjectSettings settings = ProjectSettings.Load();
+
             if (settings == null)
                 return 0;
 
             List<FacadeProperty> properties = settings.GetFacadeProperties();
+
             return properties != null ? properties.Count : 0;
         }
 
@@ -145,10 +147,12 @@ namespace Grids
         public void OnFacadeLevelChanged()
         {
             ProjectSettings settings = ProjectSettings.Load();
+
             if (settings == null)
                 return;
 
             List<FacadeProperty> facadeProperties = settings.GetFacadeProperties();
+
             if (facadeProperties == null)
                 return;
 

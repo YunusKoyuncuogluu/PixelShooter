@@ -25,12 +25,14 @@ public class TunnelManager : MonoBehaviour
     {
         this.levelData = levelData;
         levelData.MigrateGridYIfNeeded();
+
         tunnelDataList = levelData.TunnelShooterData != null
             ? new List<TunnelData>(levelData.TunnelShooterData)
             : new List<TunnelData>();
         width = levelData.Width;
         height = levelData.Height;
         cellData = levelData.CellData;
+
         CreateTunnels();
     }
 
@@ -41,8 +43,10 @@ public class TunnelManager : MonoBehaviour
             height,
             cellManager.CellSpaceX,
             cellManager.CellSpaceY);
+
         positionList = new List<Vector3>(cellPositioner.PositionList());
         coordinateList = new List<Vector2Int>(cellPositioner.CoordinateList());
+
         CreateTunnel(width, height);
     }
 
@@ -64,6 +68,7 @@ public class TunnelManager : MonoBehaviour
             Tunnel tunnel = tunnelFactory.Create();
             tunnel.transform.SetParent(transform);
             TunnelData tunnelData;
+
             if (tunnelDataList.Count > 0 && tunnelDataList[0] != null)
             {
                 tunnelData = tunnelDataList[0];
@@ -74,7 +79,8 @@ public class TunnelManager : MonoBehaviour
                 if (tunnelDataList.Count > 0)
                     tunnelDataList.RemoveAt(0);
 
-                tunnelData = TunnelData.CreateDefault();
+                tunnelData = new TunnelData();
+                tunnelData.InitializeDefault();
             }
 
             tunnelData.EnsureShooters();

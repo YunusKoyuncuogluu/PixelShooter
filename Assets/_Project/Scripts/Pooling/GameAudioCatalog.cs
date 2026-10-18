@@ -29,27 +29,42 @@ namespace PixelShooter.Pooling
 
         public AudioMixerGroup SfxGroup
         {
-            get { return sfxGroup; }
+            get
+            {
+                return sfxGroup;
+            }
         }
 
         public SfxCue ShooterSelect
         {
-            get { return shooterSelect; }
+            get
+            {
+                return shooterSelect;
+            }
         }
 
         public SfxCue BulletFire
         {
-            get { return bulletFire; }
+            get
+            {
+                return bulletFire;
+            }
         }
 
         public SfxCue LevelWin
         {
-            get { return levelWin; }
+            get
+            {
+                return levelWin;
+            }
         }
 
         public SfxCue LevelFail
         {
-            get { return levelFail; }
+            get
+            {
+                return levelFail;
+            }
         }
     }
 }

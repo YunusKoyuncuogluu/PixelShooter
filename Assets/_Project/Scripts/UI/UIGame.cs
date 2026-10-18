@@ -24,9 +24,7 @@ namespace PixelShooter.UI
         protected override void Start()
         {
             if (levelLabel != null && levelManager != null)
-            {
-                levelLabel.text = "Level " + levelManager.CurrentLevelNumber;
-            }
+                levelLabel.text = $"Level {levelManager.CurrentLevelNumber}";
 
             base.Start();
         }
@@ -40,18 +38,15 @@ namespace PixelShooter.UI
         public void OnTapSettings()
         {
             if (uiManager != null)
-            {
                 uiManager.ShowSettings();
-            }
         }
 
         public void LockInput()
         {
             Button[] buttons = GetComponentsInChildren<Button>(true);
+
             for (int i = 0; i < buttons.Length; i++)
-            {
                 buttons[i].interactable = false;
-            }
         }
     }
 }

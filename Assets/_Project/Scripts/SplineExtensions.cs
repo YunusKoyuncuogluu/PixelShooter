@@ -7,7 +7,6 @@ using UnityEngine;
 
 public static class SplineExtensions
 {
-
     public static SplineFollower FollowTo(
         this GameObject obj,
         ObjectPool pool,
@@ -146,13 +145,16 @@ public static class SplineExtensions
 
         Vector3 start = obj.transform.position;
         SplinePoint[] points = new SplinePoint[3];
+
         points[0] = new SplinePoint(start);
         points[1] = new SplinePoint(mid);
         points[2] = new SplinePoint(end);
+
         splineComputer.SetPoints(points);
         splineComputer.RebuildImmediate(true, true);
 
         SplineFollower follower = obj.AddComponent<SplineFollower>();
+
         follower.follow = false;
         follower.spline = splineComputer;
         follower.followMode = SplineFollower.FollowMode.Uniform;
@@ -172,19 +174,17 @@ public static class SplineExtensions
             follower.spline = null;
 
             DestroyOwned(follower, true);
+
             if (boundSpline != null)
-            {
                 ReleaseSpline(boundSpline.gameObject, pool);
-            }
             else
-            {
                 ReleaseSpline(splineObject, pool);
-            }
 
             if (obj != null)
                 obj.transform.position = end;
 
             ClearShooterFollowerCache(obj);
+
             onComplete?.Invoke();
         };
 
@@ -193,6 +193,7 @@ public static class SplineExtensions
         {
             if (follower == null)
                 return;
+
             onUpdate?.Invoke((float)follower.GetPercent());
         };
 
@@ -207,18 +208,16 @@ public static class SplineExtensions
     public static void ClearExistingFollowers(GameObject obj, ObjectPool pool, bool destroyImmediate)
     {
         if (obj == null)
-        {
             return;
-        }
 
         SplineFollower[] existing = obj.GetComponents<SplineFollower>();
+
         for (int i = 0; i < existing.Length; i++)
         {
             SplineFollower follower = existing[i];
+
             if (follower == null)
-            {
                 continue;
-            }
 
             follower.follow = false;
             if (follower.spline != null)
@@ -226,9 +225,7 @@ public static class SplineExtensions
                 SplineComputer spline = follower.spline;
                 follower.spline = null;
                 if (spline != null && spline.gameObject != null && spline.gameObject.name.StartsWith("DynamicSpline_"))
-                {
                     ReleaseSpline(spline.gameObject, pool);
-                }
             }
 
             DestroyOwned(follower, destroyImmediate);
@@ -240,9 +237,7 @@ public static class SplineExtensions
     private static void ReleaseSpline(GameObject splineObject, ObjectPool pool)
     {
         if (splineObject == null)
-        {
             return;
-        }
 
         if (pool != null)
         {
@@ -267,6 +262,7 @@ public static class SplineExtensions
     private static void ClearShooterFollowerCache(GameObject obj)
     {
         ShooterController shooterController = obj.GetComponent<ShooterController>();
+
         if (shooterController != null)
             shooterController.ClearTravelFollower();
     }

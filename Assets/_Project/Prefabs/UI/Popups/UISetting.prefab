@@ -1023,6 +1023,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f17d36e12ccfb464a8c29ce144504705, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  popupTransform: {fileID: 273866320378403249}
+  backgroundTransform: {fileID: 5059755909020878827}
   soundButtonImage: {fileID: 4666407213662060096}
   hapticButtonImage: {fileID: 804979425684689355}
   buttonSprites:

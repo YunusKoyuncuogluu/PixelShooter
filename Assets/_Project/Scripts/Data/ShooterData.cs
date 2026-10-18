@@ -31,15 +31,9 @@ public class ShooterData
         this.shotCount = shotCount > 0 ? shotCount : 0;
     }
 
-    public void SetShotCount(int value)
-    {
-        shotCount = value > 0 ? value : 0;
-    }
+    public void SetShotCount(int value) => shotCount = value > 0 ? value : 0;
 
-    public void SetColor(GeneralColor value)
-    {
-        color = value;
-    }
+    public void SetColor(GeneralColor value) => color = value;
 }
 
 [EnumToggleButtons]

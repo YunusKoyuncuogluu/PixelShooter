@@ -118,19 +118,17 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.BindInterfacesAndSelfTo<RuntimeLevel>().AsSingle();
         Container.Bind<ImageManager>().AsSingle();
         Container.BindInstance(shooterManager).AsSingle();
+
         if (objectPoolPrefab != null)
-        {
             Container.Bind<ObjectPool>().FromComponentInNewPrefab(objectPoolPrefab).AsSingle().NonLazy();
-        }
         if (gameAudioCatalog != null)
-        {
             Container.BindInstance(gameAudioCatalog).AsSingle();
-        }
 
         Container.Bind<GameAudio>().FromNewComponentOnNewGameObject().AsSingle().NonLazy();
         Container.Bind<UIManager>().FromNewComponentOnNewGameObject().AsSingle()
             .OnInstantiated<UIManager>((context, ui) => ui.Configure(gamePagePrefab, failPagePrefab, completedPagePrefab, settingPopupPrefab))
             .NonLazy();
+
         Container.BindInstance(cellManager).AsSingle();
         Container.BindInstance(slotManager).AsSingle();
         Container.BindInstance(playerController).AsSingle();

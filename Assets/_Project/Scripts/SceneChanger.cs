@@ -10,6 +10,7 @@ public class SceneChanger
     {
         if (string.IsNullOrEmpty(sceneName))
             return;
+
         SceneManager.LoadScene(sceneName);
     }
 }

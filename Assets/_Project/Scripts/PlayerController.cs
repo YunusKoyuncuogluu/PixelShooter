@@ -32,7 +32,10 @@ namespace Game
                 return;
 
             currentShooter = CheckShooter();
-            if (currentShooter == null || !currentShooter.IsClickable || currentShooter.IsBusy)
+            if (currentShooter == null)
+                return;
+
+            if (!currentShooter.IsHeldInSlot && (!currentShooter.IsClickable || currentShooter.IsBusy))
                 return;
 
             bool parkedInSlot = currentShooter.IsWaitingInSlot;

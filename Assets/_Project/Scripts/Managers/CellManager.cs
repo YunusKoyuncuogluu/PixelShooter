@@ -10,7 +10,6 @@ public class CellManager : MonoBehaviour
     [Inject] Cell.Factory cellFactory;
 
     [Header("Grid Parent")]
-    [Tooltip("CellParent. X ortalanir. Local Z=0 grid ust kenaridir; farkli height'larda ust sabit kalir, grid asagi buyur.")]
     [FormerlySerializedAs("m_CenterTransform")]
     [SerializeField] private Transform centerTransform;
 
@@ -59,6 +58,7 @@ public class CellManager : MonoBehaviour
             cellSpaceY);
         positionList = new List<Vector3>(gridPositioner.PositionList());
         coordinateList = new List<Vector2Int>(gridPositioner.CoordinateList());
+
         CreateCell(this.width, this.height);
     }
 
@@ -78,10 +78,7 @@ public class CellManager : MonoBehaviour
         }
     }
 
-    public bool IsInside(Vector2Int coordinate)
-    {
-        return coordinate.x >= 0 && coordinate.y >= 0 && coordinate.x < this.width && coordinate.y < this.height;
-    }
+    public bool IsInside(Vector2Int coordinate) => coordinate.x >= 0 && coordinate.y >= 0 && coordinate.x < this.width && coordinate.y < this.height;
 
     public void SetFull(Vector2Int tunnelCoordinate, bool isFull)
     {

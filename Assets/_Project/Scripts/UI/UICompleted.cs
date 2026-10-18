@@ -27,9 +27,7 @@ namespace PixelShooter.UI
         protected override void Awake()
         {
             if (goPage != null)
-            {
                 goPage.SetActive(false);
-            }
 
             base.Awake();
         }
@@ -41,9 +39,7 @@ namespace PixelShooter.UI
                 for (int i = 0; i < confettis.Length; i++)
                 {
                     if (confettis[i] != null)
-                    {
                         confettis[i].Play();
-                    }
                 }
             }
 
@@ -54,9 +50,7 @@ namespace PixelShooter.UI
         private void OnDestroy()
         {
             if (pageCts == null)
-            {
                 return;
-            }
 
             pageCts.Cancel();
             pageCts.Dispose();
@@ -66,15 +60,12 @@ namespace PixelShooter.UI
         public void OnTapContinue()
         {
             if (goButton != null)
-            {
                 goButton.SetActive(false);
-            }
 
             Time.timeScale = 1f;
+
             if (levelManager != null)
-            {
                 levelManager.CompleteCurrentLevel();
-            }
 
             sceneChanger.LoadGame();
         }
@@ -82,10 +73,9 @@ namespace PixelShooter.UI
         private async UniTaskVoid RevealPageAsync(CancellationToken cancellationToken)
         {
             await UniTask.Delay((int)(PageDelaySeconds * 1000f), ignoreTimeScale: true, cancellationToken: cancellationToken);
+
             if (goPage != null)
-            {
                 goPage.SetActive(true);
-            }
 
             base.Start();
         }

@@ -15,6 +15,9 @@ public class ShooterManager : MonoBehaviour
     private int width;
     private int height;
 
+    public int GridWidth => width;
+    public int GridHeight => height;
+
     private CellPositioner cellPositioner;
     private List<Vector3> positionList;
     private List<Vector2Int> coordinateList;
@@ -50,6 +53,7 @@ public class ShooterManager : MonoBehaviour
             height,
             cellManager.CellSpaceX,
             cellManager.CellSpaceY);
+
         positionList = new List<Vector3>(cellPositioner.PositionList());
         coordinateList = new List<Vector2Int>(cellPositioner.CoordinateList());
         shooters = new Shooter[width, height];
@@ -61,6 +65,7 @@ public class ShooterManager : MonoBehaviour
         {
             int arrayRow = levelData.GameYToArrayRow(coordinateList[i].y);
             CellData cell = cellData[coordinateList[i].x, arrayRow];
+
             if (!cell.IsFull && !cell.IsQuestionShooter)
                 continue;
 
@@ -133,6 +138,7 @@ public class ShooterManager : MonoBehaviour
         shooter.transform.localScale = Vector3.one;
         shooter.Construct(shooterData);
         TintShooter(shooter);
+
         return shooter;
     }
 
@@ -150,6 +156,7 @@ public class ShooterManager : MonoBehaviour
         Shooter shooter = shooterFactory.Create();
         PlaceOnCell(shooter, shooterData);
         shooters[shooter.Coordinate.x, shooter.Coordinate.y] = shooter;
+
         return shooter;
     }
 
@@ -168,7 +175,7 @@ public class ShooterManager : MonoBehaviour
                 Vector2Int coordinate = new Vector2Int(x, y);
                 pathFinding.BreadthFirstSearch(coordinate, out bool isExitFound);
                 shooter.SetClickable(isExitFound);
-                shooter.ClickableProcess();
+                shooter.RefreshLockState();
             }
         }
     }
@@ -182,9 +189,6 @@ public class ShooterManager : MonoBehaviour
     }
 
     public void RemoveShooter(Vector2Int coordinate) => shooters[coordinate.x, coordinate.y] = null;
-
-    public int GridWidth => width;
-    public int GridHeight => height;
 
     public int CountGridShooters()
     {
@@ -223,10 +227,11 @@ public class ShooterManager : MonoBehaviour
                         continue;
 
                     Vector2Int coordinate = shooter.Coordinate;
-                    shooter.SendFromGrid();
+                    shooter.SendToSlot();
                     cellManager.SetFull(coordinate, false);
                     sent++;
                     sentOne = true;
+
                     break;
                 }
             }
@@ -240,6 +245,7 @@ public class ShooterManager : MonoBehaviour
     {
         if (coordinate.x < 0 || coordinate.x >= width || coordinate.y < 0 || coordinate.y >= height)
             return null;
+
         return shooters[coordinate.x, coordinate.y];
     }
 }

@@ -34,8 +34,10 @@ namespace PixelShooter.UI
         public UIGame ShowGame()
         {
             resultOpen = false;
+
             GameObject instance = Show(gamePagePrefab, true);
             activeGamePage = instance != null ? instance.GetComponent<UIGame>() : null;
+
             return activeGamePage;
         }
 
@@ -43,6 +45,7 @@ namespace PixelShooter.UI
         {
             resultOpen = true;
             activeGamePage = null;
+
             Show(completedPagePrefab, true);
         }
 
@@ -50,6 +53,7 @@ namespace PixelShooter.UI
         {
             resultOpen = true;
             activeGamePage = null;
+
             Show(failPagePrefab, true);
         }
 
@@ -57,23 +61,20 @@ namespace PixelShooter.UI
         {
             Time.timeScale = 0f;
             Transform parent = GetComponent<Canvas>() != null ? null : transform;
+
             Show(settingPopupPrefab, false, parent);
         }
 
         public void NotifyPopupClosed()
         {
             if (!resultOpen)
-            {
                 Time.timeScale = 1f;
-            }
         }
 
         public void LockGameplay()
         {
             if (activeGamePage != null)
-            {
                 activeGamePage.LockInput();
-            }
         }
 
         public void GoHome()
@@ -86,42 +87,32 @@ namespace PixelShooter.UI
         private GameObject Show(GameObject prefab, bool isPage)
         {
             if (prefab == null || container == null)
-            {
                 return null;
-            }
 
             if (isPage)
-            {
                 HideAll();
-            }
 
             GameObject instance = Show(prefab, isPage, transform);
+
             return instance;
         }
 
         private GameObject Show(GameObject prefab, bool isPage, Transform parent)
         {
             if (prefab == null || container == null)
-            {
                 return null;
-            }
 
             if (isPage)
-            {
                 HideAll();
-            }
 
             GameObject instance = parent != null
                 ? container.InstantiatePrefab(prefab, parent)
                 : container.InstantiatePrefab(prefab);
+
             if (isPage)
-            {
                 pages.Add(instance);
-            }
             else
-            {
                 popups.Add(instance);
-            }
 
             return instance;
         }
@@ -132,14 +123,12 @@ namespace PixelShooter.UI
             DestroyList(popups);
         }
 
-        private static void DestroyList(List<GameObject> instances)
+        private void DestroyList(List<GameObject> instances)
         {
             for (int i = 0; i < instances.Count; i++)
             {
                 if (instances[i] != null)
-                {
                     Destroy(instances[i]);
-                }
             }
 
             instances.Clear();

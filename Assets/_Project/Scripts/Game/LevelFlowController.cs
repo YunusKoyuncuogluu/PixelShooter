@@ -24,22 +24,16 @@ namespace PixelShooter.Game
             resultShown = false;
 
             if (slotManager != null)
-            {
                 slotManager.OnShooterAreaStuck += OnShooterAreaStuck;
-            }
 
             if (uiManager != null)
-            {
                 uiManager.ShowGame();
-            }
         }
 
         private void OnDestroy()
         {
             if (slotManager != null)
-            {
                 slotManager.OnShooterAreaStuck -= OnShooterAreaStuck;
-            }
         }
 
         public void TriggerWin()
@@ -51,16 +45,14 @@ namespace PixelShooter.Game
                 winFastForward.Stop();
 
             resultShown = true;
+
             if (gameAudio != null)
-            {
                 gameAudio.PlayLevelWin();
-            }
 
             StopGameplay(false);
+
             if (uiManager != null)
-            {
                 uiManager.ShowCompleted();
-            }
         }
 
         private void OnShooterAreaStuck()
@@ -74,39 +66,29 @@ namespace PixelShooter.Game
                 return;
 
             resultShown = true;
+
             if (winFastForward != null)
-            {
                 winFastForward.Stop();
-            }
 
             if (gameAudio != null)
-            {
                 gameAudio.PlayLevelFail();
-            }
 
             StopGameplay(true);
+
             if (uiManager != null)
-            {
                 uiManager.ShowFail();
-            }
         }
 
         private void StopGameplay(bool freezeTime)
         {
             if (playerController != null)
-            {
                 playerController.SetActive(false);
-            }
 
             if (slotManager != null)
-            {
-                slotManager.Halt();
-            }
+                slotManager.Stop();
 
             if (freezeTime)
-            {
                 Time.timeScale = 0f;
-            }
 
             GameplayStopped?.Invoke();
         }

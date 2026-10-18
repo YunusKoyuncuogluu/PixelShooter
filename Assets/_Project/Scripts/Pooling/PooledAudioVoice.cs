@@ -11,9 +11,7 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
     {
         source = GetComponent<AudioSource>();
         if (source == null)
-        {
             source = gameObject.AddComponent<AudioSource>();
-        }
 
         source.playOnAwake = false;
         source.loop = false;
@@ -24,10 +22,9 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
     public int Play(AudioClip clip, float volume, float pitch, AudioMixerGroup outputGroup)
     {
         playVersion++;
+
         if (source == null || clip == null)
-        {
             return playVersion;
-        }
 
         source.outputAudioMixerGroup = outputGroup;
         source.clip = clip;
@@ -35,7 +32,9 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
         source.pitch = pitch;
         source.loop = false;
         source.ignoreListenerPause = true;
+
         source.Play();
+
         return playVersion;
     }
 
@@ -47,10 +46,9 @@ public class PooledAudioVoice : MonoBehaviour, IPoolObject
     public void Reset()
     {
         playVersion++;
+
         if (source == null)
-        {
             return;
-        }
 
         source.Stop();
         source.clip = null;

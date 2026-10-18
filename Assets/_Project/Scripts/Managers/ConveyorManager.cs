@@ -11,7 +11,7 @@ public class ConveyorManager : MonoBehaviour
 {
     [Inject] private SlotManager slotManager;
     [Inject] private ImageManager imageManager;
-    [InjectOptional] private PixelShooter.Game.LevelFlowController levelFlowController;
+    [InjectOptional] private LevelFlowController levelFlowController;
     [InjectOptional] private PlateQueueManager plateQueueManager;
     [Inject] private IFastForwardGate fastForwardGate;
     [Inject] private ObjectPool objectPool;
@@ -21,37 +21,36 @@ public class ConveyorManager : MonoBehaviour
     private readonly List<ShooterController> activeShooters = new List<ShooterController>(8);
     public int ActiveShooterCount => activeShooters.Count;
 
-    public ShooterController GetActiveShooter(int index)
-    {
-        return activeShooters[index];
-    }
-
     private bool failTriggered;
-    private bool halted;
+    private bool isStopped;
     private bool eventsHooked;
 
-    public bool IsHalted => halted;
+    public bool IsStopped => isStopped;
 
     private void Start()
     {
         HookEvents();
+
         if (levelFlowController != null)
-            levelFlowController.GameplayStopped += Halt;
+            levelFlowController.GameplayStopped += Stop;
     }
 
     private void OnDestroy()
     {
         if (levelFlowController != null)
-            levelFlowController.GameplayStopped -= Halt;
+            levelFlowController.GameplayStopped -= Stop;
+
         UnhookEvents();
     }
 
-    public void Halt()
+    public ShooterController GetActiveShooter(int index) => activeShooters[index];
+
+    public void Stop()
     {
-        if (halted)
+        if (isStopped)
             return;
 
-        halted = true;
+        isStopped = true;
         for (int i = activeShooters.Count - 1; i >= 0; i--)
         {
             ShooterController shooterController = activeShooters[i];
@@ -80,15 +79,13 @@ public class ConveyorManager : MonoBehaviour
         eventsHooked = false;
     }
 
-    public void SendShooterToConveyor(ShooterController shooterController, Slot originSlot)
+    public bool SendShooterToConveyor(ShooterController shooterController, Slot originSlot)
     {
-        if (halted || shooterController == null || conveyorSpline == null)
-        {
-            return;
-        }
+        if (isStopped || shooterController == null || conveyorSpline == null)
+            return false;
 
         if (activeShooters.Contains(shooterController))
-            return;
+            return true;
 
         Shooter shooter = shooterController.GetComponent<Shooter>();
         if (shooter != null)
@@ -97,16 +94,17 @@ public class ConveyorManager : MonoBehaviour
         if (originSlot != null)
             originSlot.SetFull(false);
 
-        shooterController.ReleaseOriginSlot();
+        shooterController.EnterConveyor();
         activeShooters.Add(shooterController);
 
         AttachPlateFollower(shooterController);
-        shooterController.BeginConveyorTravel(this).Forget();
+        shooterController.BeginTravel(this).Forget();
+        return true;
     }
 
     public void HandleShooterFinished(ShooterController shooterController, bool outOfAmmo)
     {
-        if (halted || shooterController == null)
+        if (isStopped || shooterController == null)
             return;
 
         DetachPlateFollower(shooterController);
@@ -117,7 +115,7 @@ public class ConveyorManager : MonoBehaviour
 
         if (outOfAmmo)
         {
-            shooterController.DestroyEmptyShooter();
+            shooterController.DestroyEmpty();
             TryTriggerWin();
             return;
         }
@@ -127,7 +125,7 @@ public class ConveyorManager : MonoBehaviour
 
     private void ReturnShooterToSlotArea(ShooterController shooterController)
     {
-        if (halted)
+        if (isStopped)
             return;
 
         if (slotManager.GetAvailableSlot() == null)
@@ -139,7 +137,7 @@ public class ConveyorManager : MonoBehaviour
             }
 
             TriggerFail();
-            shooterController.NotifyReturnedWithoutSlot();
+            shooterController.LeaveConveyor();
             return;
         }
 
@@ -151,7 +149,7 @@ public class ConveyorManager : MonoBehaviour
         CancellationToken cancellationToken = this.GetCancellationTokenOnDestroy();
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (halted)
+            if (isStopped)
                 break;
             if (fastForwardGate == null || !fastForwardGate.IsActive)
                 break;
@@ -161,13 +159,13 @@ public class ConveyorManager : MonoBehaviour
             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
         }
 
-        if (halted || shooterController == null)
+        if (isStopped || shooterController == null)
             return;
 
         if (slotManager.GetAvailableSlot() == null)
         {
             TriggerFail();
-            shooterController.NotifyReturnedWithoutSlot();
+            shooterController.LeaveConveyor();
             return;
         }
 
@@ -176,20 +174,20 @@ public class ConveyorManager : MonoBehaviour
 
     private void PlaceReturningShooter(ShooterController shooterController)
     {
-        if (halted)
+        if (isStopped)
             return;
 
         Slot freeSlot = slotManager.GetAvailableSlot();
         if (freeSlot == null)
         {
             TriggerFail();
-            shooterController.NotifyReturnedWithoutSlot();
+            shooterController.LeaveConveyor();
             return;
         }
 
         Shooter shooter = shooterController.GetComponent<Shooter>();
         slotManager.ForcePlaceShooter(shooter, freeSlot);
-        shooterController.OnReturnedToSlot(freeSlot);
+        shooterController.ReturnToSlot(freeSlot);
 
         if (shooter != null && ShouldAutoContinue(shooterController))
             shooter.ArmAutoContinue();
@@ -213,7 +211,7 @@ public class ConveyorManager : MonoBehaviour
         Shooter shooter = shooterController.GetComponent<Shooter>();
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;
 
-        SplineFollower follower = plate.EnsureFollower();
+        SplineFollower follower = plate.GetTravelFollower();
         follower.follow = false;
         follower.spline = conveyorSpline;
         follower.followMode = SplineFollower.FollowMode.Uniform;
@@ -263,7 +261,8 @@ public class ConveyorManager : MonoBehaviour
         Shooter shooter = shooterController.GetComponent<Shooter>();
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;
 
-        SplineFollower follower = shooterController.EnsureFollower();
+        SplineFollower follower = shooterController.GetTravelFollower();
+
         follower.follow = false;
         follower.spline = conveyorSpline;
         follower.followMode = SplineFollower.FollowMode.Uniform;
@@ -279,14 +278,16 @@ public class ConveyorManager : MonoBehaviour
     private void DetachPlateFollower(ShooterController shooterController)
     {
         SplineFollower follower = shooterController.CachedFollower;
+
         if (follower != null)
         {
             follower.follow = false;
-            follower.onEndReached -= shooterController.HandleLapReached;
+            follower.onEndReached -= shooterController.OnLapReached;
             follower.spline = null;
         }
 
         Plate plate = plateQueueManager != null ? plateQueueManager.GetBoundPlate(shooterController) : null;
+
         if (plate != null)
             plate.DetachFollower();
 
@@ -304,7 +305,7 @@ public class ConveyorManager : MonoBehaviour
         if (shooterController.RemainingShots <= 0)
             return false;
 
-        return imageManager.HasRemainingPixelsOfPaletteId(shooterController.PaletteId);
+        return imageManager.HasClaimablePixel(shooterController.PaletteId);
     }
 
     private void TriggerFail()

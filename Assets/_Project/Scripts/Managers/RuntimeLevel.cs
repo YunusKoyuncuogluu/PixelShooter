@@ -19,9 +19,7 @@ public class RuntimeLevel : IInitializable
     {
         ILevelData currentLevelData = levelManager.CurrentLevelData;
         if (currentLevelData == null)
-        {
             return;
-        }
 
         LevelData levelData = currentLevelData as LevelData;
 
@@ -41,7 +39,7 @@ public class RuntimeLevel : IInitializable
             levelData.UndoPixelYMigrateIfNeeded();
 
         if (imageGridRenderer != null && levelData != null)
-            imageGridRenderer.BuildBatches(levelData);
+            imageGridRenderer.BuildPixelGrid(levelData);
 
         if (imageManager != null && levelData != null)
             imageManager.Construct(levelData);

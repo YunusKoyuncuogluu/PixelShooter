@@ -20,9 +20,7 @@ namespace PixelShooter.UI
                 Container.BindInstance(mainMenuUI).AsSingle();
             }
             else
-            {
                 Container.Bind<UIManager>().FromComponentInHierarchy().AsSingle();
-            }
         }
     }
 }
