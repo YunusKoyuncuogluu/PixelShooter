@@ -46,8 +46,6 @@ CBUFFER_START(UnityPerMaterial)
 
 	half _Cutoff;
 
-	half4 _BaseColor;
-
 	float4 _EmissionMap_ST;
 	half _EmissionChannel;
 	half4 _EmissionColor;
@@ -57,7 +55,6 @@ CBUFFER_START(UnityPerMaterial)
 	half _MatCapType;
 
 	half4 _SColor;
-	half4 _HColor;
 
 	half _RimMin;
 	half _RimMax;
@@ -81,7 +78,6 @@ CBUFFER_START(UnityPerMaterial)
 	half _IndirectIntensity;
 	half _SingleIndirectColor;
 
-	half _OutlineWidth;
 	half _OutlineMinWidth;
 	half _OutlineMaxWidth;
 	half4 _OutlineColor;
@@ -89,6 +85,14 @@ CBUFFER_START(UnityPerMaterial)
 	half _DirectIntensityOutline;
 	half _IndirectIntensityOutline;
 CBUFFER_END
+
+// MaterialPropertyBlock writes these per renderer. They must be instanced
+// or the frame debugger reports "Non-instanced properties set for instanced shader".
+UNITY_INSTANCING_BUFFER_START(Props)
+	UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+	UNITY_DEFINE_INSTANCED_PROP(float4, _HColor)
+	UNITY_DEFINE_INSTANCED_PROP(float, _OutlineWidth)
+UNITY_INSTANCING_BUFFER_END(Props)
 
 // Samplers
 sampler2D _BaseMap;
@@ -513,8 +517,9 @@ half4 Fragment (Varyings input, half vFace : VFACE) : SV_Target
 	// Base
 
 	half4 albedo = tex2D(_BaseMap, mainTexcoord).rgba;
-	albedo.rgb *= _BaseColor.rgb;
-	half alpha = albedo.a * _BaseColor.a;
+	float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(Props, _BaseColor);
+	albedo.rgb *= baseColor.rgb;
+	half alpha = albedo.a * baseColor.a;
 	half3 emission = half3(0,0,0);
 
 	// Normal Mapping
@@ -625,10 +630,11 @@ half4 Fragment (Varyings input, half vFace : VFACE) : SV_Target
 	#endif
 
 	// Highlight/shadow colors
+	float3 highlightTint = UNITY_ACCESS_INSTANCED_PROP(Props, _HColor).rgb;
 	#if !defined(TCP2_SHADOW_LIGHT_COLOR)
-		half3 highlightColor = _HColor.rgb * lightColor.rgb;
+		half3 highlightColor = highlightTint * lightColor.rgb;
 	#else
-		half3 highlightColor = _HColor.rgb;
+		half3 highlightColor = highlightTint;
 	#endif
 	#if defined(UNITY_PASS_FORWARDBASE)
 		ramp = lerp(_SColor.rgb, highlightColor, ramp);
@@ -836,7 +842,7 @@ half4 Fragment (Varyings input, half vFace : VFACE) : SV_Target
 			#endif
 
 			// Apply highlight color only
-			ramp = lerp(half3(0,0,0), _HColor.rgb, ramp);
+			ramp = lerp(half3(0,0,0), highlightTint, ramp);
 
 			// Output color
 			color += albedo.rgb * lightColor.rgb * ramp;
@@ -1018,6 +1024,7 @@ Varyings_Outline vertex_outline (Attributes_Outline input)
 	UNITY_SETUP_INSTANCE_ID(input);
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
 	UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+	float outlineWidthValue = UNITY_ACCESS_INSTANCED_PROP(Props, _OutlineWidth);
 
 	#if defined(TCP2_HYBRID_URP)
 		VertexPositionInputs vertexInput = GetVertexPositionInputs(input.vertex.xyz);
@@ -1082,23 +1089,29 @@ Varyings_Outline vertex_outline (Attributes_Outline input)
 
 	#if !defined(SHADOWCASTER_PASS)
 		output.pos = UnityObjectToClipPos(input.vertex.xyz);
-		normal = mul(unity_ObjectToWorld, float4(normal, 0)).xyz;
-		float2 clipNormals = normalize(mul(UNITY_MATRIX_VP, float4(normal,0)).xy);
+		// Vertex-color smoothed normals are object-space. URP keeps unity_ObjectToWorld as a
+		// single uniform, so instanced draws must use UNITY_MATRIX_M (set up by UNITY_SETUP_INSTANCE_ID).
+		#if defined(TCP2_HYBRID_URP)
+			float3 normalWS = mul((float3x3)UNITY_MATRIX_M, normal);
+		#else
+			float3 normalWS = mul((float3x3)unity_ObjectToWorld, normal);
+		#endif
+		float2 clipNormals = normalize(mul(UNITY_MATRIX_VP, float4(normalWS, 0)).xy);
 		#if defined(TCP2_OUTLINE_CONST_SIZE)
-			float2 outlineWidth = (_OutlineWidth * output.pos.w) / (_ScreenParams.xy / 2.0);
+			float2 outlineWidth = (outlineWidthValue * output.pos.w) / (_ScreenParams.xy / 2.0);
 			output.pos.xy += clipNormals.xy * outlineWidth;
 		#elif defined(TCP2_OUTLINE_MIN_SIZE)
 			float screenRatio = _ScreenParams.x / _ScreenParams.y;
 			float2 outlineWidth = max(
 				(_OutlineMinWidth * output.pos.w) / (_ScreenParams.xy / 2.0),
-				(_OutlineWidth / 100) * float2(1.0, screenRatio)
+				(outlineWidthValue / 100) * float2(1.0, screenRatio)
 			);
 			output.pos.xy += clipNormals.xy * outlineWidth;
 		#elif defined(TCP2_OUTLINE_MIN_MAX_SIZE)
 			float screenRatio = _ScreenParams.x / _ScreenParams.y;
 			float2 outlineWidth = max(
 				(_OutlineMinWidth * output.pos.w) / (_ScreenParams.xy / 2.0),
-		        (_OutlineWidth / 100) * float2(1.0, screenRatio)
+		        (outlineWidthValue / 100) * float2(1.0, screenRatio)
 		    );
 			outlineWidth = min(
 				(_OutlineMaxWidth * output.pos.w) / (_ScreenParams.xy / 2.0),
@@ -1107,10 +1120,10 @@ Varyings_Outline vertex_outline (Attributes_Outline input)
 			output.pos.xy += clipNormals.xy * outlineWidth;
 		#else
 			float screenRatio = _ScreenParams.x / _ScreenParams.y;
-			output.pos.xy += clipNormals.xy * (_OutlineWidth / 100) * float2(1.0, screenRatio);
+			output.pos.xy += clipNormals.xy * (outlineWidthValue / 100) * float2(1.0, screenRatio);
 		#endif
 	#else
-		input.vertex = input.vertex + float4(normal,0) * _OutlineWidth * 0.01;
+		input.vertex = input.vertex + float4(normal,0) * outlineWidthValue * 0.01;
 	#endif
 
 	output.vcolor.rgba = _OutlineColor.rgba;
@@ -1223,7 +1236,7 @@ float4 fragment_outline (Varyings_Outline input) : SV_Target
 			#endif
 
 			// Highlight/shadow colors
-			ramp = lerp(_SColor.rgb, _HColor.rgb, ramp);
+			ramp = lerp(_SColor.rgb, UNITY_ACCESS_INSTANCED_PROP(Props, _HColor).rgb, ramp);
 
 			// Apply ramp
 			outlineColor.rgb *= lerp(half3(1,1,1), ramp, _DirectIntensityOutline) * lightColor;
@@ -1258,7 +1271,7 @@ float4 fragment_outline (Varyings_Outline input) : SV_Target
 				ramp *= atten;
 
 				// Apply highlight color only
-				ramp = lerp(half3(0,0,0), _HColor.rgb, ramp);
+				ramp = lerp(half3(0,0,0), UNITY_ACCESS_INSTANCED_PROP(Props, _HColor).rgb, ramp);
 
 				// Apply ramp
 				outlineColor.rgb += ramp * _DirectIntensityOutline * lightColor * albedo.rgb;

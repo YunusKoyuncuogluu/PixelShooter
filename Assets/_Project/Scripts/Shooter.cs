@@ -38,6 +38,11 @@ public class Shooter : MonoBehaviour
     private bool isClickable;
     public bool IsClickable => isClickable;
 
+    private float openOutlineWidth = 1f;
+    private bool outlineStateReady;
+    private bool outlineIsOpen;
+    private bool keepOutlineOpen;
+
     private bool isQuestionShooter;
     public bool IsQuestionShooter => isQuestionShooter;
 
@@ -106,6 +111,7 @@ public class Shooter : MonoBehaviour
         Material[] originalMaterials = facadeProperties[(int)shooterData.Color - 1].ShooterMaterials;
         shooterMaterial = originalMaterials != null && originalMaterials.Length > 0 ? originalMaterials[0] : null;
         shooterColor = facadeProperties[(int)shooterData.Color - 1].Color;
+        CacheOpenOutlineWidth();
         SetMaterial(isQuestionShooter);
     }
 
@@ -114,7 +120,7 @@ public class Shooter : MonoBehaviour
         shooterColor = swatch;
         if (!isQuestionShooter)
         {
-            ApplyPropertyBlock(isClickable ? 1f : 0f);
+            ApplyPropertyBlock(ShouldShowOutline() ? openOutlineWidth : 0f);
         }
     }
 
@@ -131,10 +137,24 @@ public class Shooter : MonoBehaviour
             extraRenderer.sharedMaterial = material;
         }
 
-        ApplyPropertyBlock(isQuestion ? 0f : (isClickable ? 1f : 0f));
+        ApplyPropertyBlock(isQuestion ? 0f : (ShouldShowOutline() ? openOutlineWidth : 0f));
     }
 
-    public void SetClickable(bool clickable) => isClickable = clickable;
+    public void SetClickable(bool clickable)
+    {
+        if (isClickable == clickable)
+        {
+            return;
+        }
+
+        isClickable = clickable;
+        SetOutline(clickable);
+    }
+
+    private bool ShouldShowOutline()
+    {
+        return keepOutlineOpen || isClickable;
+    }
 
     public void SetTunnelShooter(bool tunnelShooter) => isTunnelShooter = tunnelShooter;
 
@@ -142,7 +162,17 @@ public class Shooter : MonoBehaviour
 
     public void SetOutline(bool open)
     {
-        ApplyPropertyBlock(open ? 1f : 0f);
+        if (keepOutlineOpen)
+        {
+            open = true;
+        }
+
+        if (outlineStateReady && outlineIsOpen == open)
+        {
+            return;
+        }
+
+        ApplyPropertyBlock(open ? openOutlineWidth : 0f);
     }
 
     public void ClickableProcess()
@@ -158,7 +188,6 @@ public class Shooter : MonoBehaviour
 
         if (unlockHandled)
         {
-            SetOutline(true);
             return;
         }
 
@@ -191,7 +220,8 @@ public class Shooter : MonoBehaviour
         if (isBusy || !isClickable || isWaitingInSlot || slotManager.IsHalted)
             return;
 
-        isClickable = false;
+        keepOutlineOpen = true;
+        SetClickable(false);
         isBusy = true;
         revealSequence?.Kill();
         if (homePoseCached && cachedTransform != null)
@@ -210,8 +240,7 @@ public class Shooter : MonoBehaviour
         mySlot = slot;
         isBusy = false;
         isWaitingInSlot = true;
-        isClickable = true;
-        SetOutline(true);
+        SetClickable(true);
 
         if (!continueWhenSeated)
             return;
@@ -229,7 +258,8 @@ public class Shooter : MonoBehaviour
             return;
 
         isWaitingInSlot = false;
-        isClickable = false;
+        keepOutlineOpen = true;
+        SetClickable(false);
         isBusy = true;
         ShooterController shooterController = GetComponent<ShooterController>();
         if (shooterController != null)
@@ -241,7 +271,7 @@ public class Shooter : MonoBehaviour
         mySlot = slot;
         isBusy = true;
         isWaitingInSlot = false;
-        isClickable = false;
+        SetClickable(false);
 
         if (cachedTransform == null)
             cachedTransform = transform;
@@ -480,6 +510,14 @@ public class Shooter : MonoBehaviour
         SetMaterial(false);
     }
 
+    private void CacheOpenOutlineWidth()
+    {
+        if (shooterMaterial != null && shooterMaterial.HasProperty(OutlineWidthId))
+        {
+            openOutlineWidth = shooterMaterial.GetFloat(OutlineWidthId);
+        }
+    }
+
     private void ApplyPropertyBlock(float width)
     {
         if (propertyBlock == null)
@@ -487,6 +525,8 @@ public class Shooter : MonoBehaviour
             return;
         }
 
+        outlineStateReady = true;
+        outlineIsOpen = width > 0f;
         propertyBlock.Clear();
         if (!isQuestionShooter)
         {

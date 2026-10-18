@@ -391,6 +391,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				float2 uv           : TEXCOORD0;
 				float4 positionCS   : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
 			float4 GetShadowPositionHClip(Attributes_Shadow input)
@@ -419,6 +420,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				Varyings_Shadow output = (Varyings_Shadow)0;
 				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
 
 				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
 				output.positionCS = GetShadowPositionHClip(input);
@@ -427,10 +429,12 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 
 			half4 ShadowPassFragment(Varyings_Shadow input) : SV_TARGET
 			{
+				UNITY_SETUP_INSTANCE_ID(input);
 				#if defined(_ALPHATEST_ON)
 					half4 albedo = tex2D(_BaseMap, input.uv.xy).rgba;
-					albedo.rgb *= _BaseColor.rgb;
-					half alpha = albedo.a * _BaseColor.a;
+					float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(Props, _BaseColor);
+					albedo.rgb *= baseColor.rgb;
+					half alpha = albedo.a * baseColor.a;
 					clip(alpha - _Cutoff);
 				#endif
 
@@ -486,6 +490,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				Varyings_Depth output = (Varyings_Depth)0;
 				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
 				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
@@ -495,11 +500,13 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 
 			half4 DepthOnlyFragment(Varyings_Depth input) : SV_TARGET
 			{
+				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
 				half4 albedo = tex2D(_BaseMap, input.uv.xy).rgba;
-				albedo.rgb *= _BaseColor.rgb;
-				half alpha = albedo.a * _BaseColor.a;
+				float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(Props, _BaseColor);
+				albedo.rgb *= baseColor.rgb;
+				half alpha = albedo.a * baseColor.a;
 
 				#if defined(_ALPHATEST_ON)
 					clip(alpha - _Cutoff);
@@ -559,6 +566,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				Varyings_Depth output = (Varyings_Depth)0;
 				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
 				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
@@ -570,10 +578,12 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 
 			half4 DepthNormalsFragment(Varyings_Depth input) : SV_TARGET
 			{
+				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
 				half4 albedo = tex2D(_BaseMap, input.uv.xy).rgba;
-				half alpha = albedo.a * _BaseColor.a;
+				float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(Props, _BaseColor);
+				half alpha = albedo.a * baseColor.a;
 
 				#if defined(_ALPHATEST_ON)
 					clip(alpha - _Cutoff);
@@ -800,6 +810,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				V2F_SHADOW_CASTER;
 				float2 uv : TEXCOORD1;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
@@ -807,6 +818,7 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			{
 				Varyings_Shadow o;
 				UNITY_SETUP_INSTANCE_ID(v);
+				UNITY_TRANSFER_INSTANCE_ID(v, o);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 				TRANSFER_SHADOW_CASTER_NORMALOFFSET(o)
 				o.uv = TRANSFORM_TEX(v.texcoord, _BaseMap);
@@ -815,10 +827,12 @@ Shader "Toony Colors Pro 2/Hybrid Shader"
 			
 			float4 fragment_shadow (Varyings_Shadow i) : SV_Target
 			{
+				UNITY_SETUP_INSTANCE_ID(i);
 				#if defined(_ALPHATEST_ON)
 					half4 albedo = tex2D(_BaseMap, i.uv.xy).rgba;
-					albedo.rgb *= _BaseColor.rgb;
-					half alpha = albedo.a * _BaseColor.a;
+					float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(Props, _BaseColor);
+					albedo.rgb *= baseColor.rgb;
+					half alpha = albedo.a * baseColor.a;
 					clip(alpha - _Cutoff);
 				#endif
 				SHADOW_CASTER_FRAGMENT(i)
