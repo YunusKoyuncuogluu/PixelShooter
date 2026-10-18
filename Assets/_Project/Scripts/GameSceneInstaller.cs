@@ -100,10 +100,6 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
     private Plate plateFactory;
 
     [SerializeField]
-    [FoldoutGroup("Prefabs")]
-    private ObjectPool objectPoolPrefab;
-
-    [SerializeField]
     [FoldoutGroup("Audio")]
     private GameAudioCatalog gameAudioCatalog;
 
@@ -119,8 +115,6 @@ public class GameSceneInstaller : MonoInstaller<GameSceneInstaller>
         Container.Bind<ImageManager>().AsSingle();
         Container.BindInstance(shooterManager).AsSingle();
 
-        if (objectPoolPrefab != null)
-            Container.Bind<ObjectPool>().FromComponentInNewPrefab(objectPoolPrefab).AsSingle().NonLazy();
         if (gameAudioCatalog != null)
             Container.BindInstance(gameAudioCatalog).AsSingle();
 

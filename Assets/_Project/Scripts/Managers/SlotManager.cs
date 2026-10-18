@@ -22,6 +22,7 @@ public class SlotManager : MonoBehaviour
     private List<Shooter> shooters;
     private List<Shooter> waitingShooters;
     private bool stopped;
+    private bool wrongWarningBusy;
 
     public bool IsHalted => stopped;
 
@@ -70,13 +71,14 @@ public class SlotManager : MonoBehaviour
         if (stopped)
             return;
 
-        if (waitingShooters.Count <= 0)
-            return;
+        if (waitingShooters != null && waitingShooters.Count > 0)
+        {
+            bool placed = PlaceShooter(waitingShooters[0]);
+            if (placed)
+                waitingShooters.RemoveAt(0);
+        }
 
-        bool placed = PlaceShooter(waitingShooters[0]);
-
-        if (placed)
-            waitingShooters.RemoveAt(0);
+        UpdateWrongWarnings();
     }
 
     private int GetSlotCountFromEnum(SlotCount count)
@@ -165,6 +167,35 @@ public class SlotManager : MonoBehaviour
             case SlotCount.Seven:
                 break;
         }
+    }
+
+    private void UpdateWrongWarnings()
+    {
+        if (slots == null)
+            return;
+
+        bool danger = slots.Count > 0 && IsAreaFull;
+        if (!danger && !wrongWarningBusy)
+            return;
+
+        float deltaTime = Time.deltaTime;
+        bool busy = false;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            Slot slot = slots[i];
+            if (slot == null)
+                continue;
+
+            slot.SetWrongWarning(danger);
+            if (!slot.WrongWarningBusy)
+                continue;
+
+            slot.TickWrongWarning(deltaTime);
+            busy = true;
+        }
+
+        wrongWarningBusy = busy;
     }
 
     public Slot GetAvailableSlot()

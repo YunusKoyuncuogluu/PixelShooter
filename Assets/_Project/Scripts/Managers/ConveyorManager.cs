@@ -214,6 +214,7 @@ public class ConveyorManager : MonoBehaviour
         SplineFollower follower = plate.GetTravelFollower();
         follower.follow = false;
         follower.spline = conveyorSpline;
+        follower.updateMethod = SplineUser.UpdateMethod.Update;
         follower.followMode = SplineFollower.FollowMode.Uniform;
         follower.followSpeed = speed;
         follower.wrapMode = SplineFollower.Wrap.Loop;
@@ -265,6 +266,7 @@ public class ConveyorManager : MonoBehaviour
 
         follower.follow = false;
         follower.spline = conveyorSpline;
+        follower.updateMethod = SplineUser.UpdateMethod.Update;
         follower.followMode = SplineFollower.FollowMode.Uniform;
         follower.followSpeed = speed;
         follower.wrapMode = SplineFollower.Wrap.Loop;

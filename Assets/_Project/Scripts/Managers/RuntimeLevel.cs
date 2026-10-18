@@ -39,7 +39,7 @@ public class RuntimeLevel : IInitializable
             levelData.UndoPixelYMigrateIfNeeded();
 
         if (imageGridRenderer != null && levelData != null)
-            imageGridRenderer.BuildPixelGrid(levelData);
+            imageGridRenderer.BuildGridFromLevelData(levelData);
 
         if (imageManager != null && levelData != null)
             imageManager.Construct(levelData);

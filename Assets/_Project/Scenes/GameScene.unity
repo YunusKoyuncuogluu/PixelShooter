@@ -1408,7 +1408,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5db46eac5101064b8dfe963b09e2ad3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ImageGridRenderer
-  pixelCubePrefab: {fileID: 8266960900662059296, guid: 515b0c37fa7d8054c96b1fddb4c7cb06, type: 3}
   instanceMaterial: {fileID: 2100000, guid: 7f3c9e2a1b4d4c6e8a0f5d7b9c1e3a25, type: 2}
   cellSpacing: 0.25
   cellScale: 0.5
@@ -2124,7 +2123,6 @@ MonoBehaviour:
   slotFactory: {fileID: 5990351794390491334, guid: 6bdfdb14d51322143bc8aa94a42eb54f, type: 3}
   tunnelFactory: {fileID: 7036010414862031397, guid: e6452b789857a4e4084bc89958e3b1c0, type: 3}
   plateFactory: {fileID: 100003, guid: 976bd02a0c9747cc80af5e5450f32c91, type: 3}
-  objectPoolPrefab: {fileID: 8622582206631468190, guid: c3a91e7b4d2f4a6e8b0c1d5f6a7e8c11, type: 3}
   gameAudioCatalog: {fileID: 11400000, guid: c5b8d2e14f6a4c9b8e0d1a3f5c7b9d24, type: 2}
 --- !u!1 &2000680360
 GameObject:

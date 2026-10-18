@@ -1,21 +1,29 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using LevelManagement;
+using PixelShooter.Pooling;
 using UnityEngine;
-using UnityEngine.Rendering;
+using Zenject;
 
 public class ImageGridRenderer : MonoBehaviour
 {
-    private const int MaxHidePops = 64;
+    private const int MaxConcurrentPops = 64;
     private const int MaxPaletteLevel = 64;
-    private const float HidePunchDuration = 0.08f;
-    private const float HideCollapseDuration = 0.12f;
-    private const float HidePopY = 1.2f;
+    private const float PopPunchDuration = 0.08f;
+    private const float PopCollapseDuration = 0.12f;
+    private const float PopHeightScale = 1.2f;
+    private const string OutlinePassName = "Outline";
 
-    private readonly int ColorPropertyId = Shader.PropertyToID("_BaseColor");
+    private readonly Vector2Int[] ExposedNeighbors =
+    {
+        new Vector2Int(-1, 0),
+        new Vector2Int(1, 0),
+        new Vector2Int(0, -1),
+        new Vector2Int(0, 1),
+        new Vector2Int(1, -1)
+    };
 
     [Header("Render Assets")]
-    [SerializeField] private GameObject pixelCubePrefab;
     [SerializeField] private Material instanceMaterial;
 
     [Header("Grid Layout")]
@@ -24,285 +32,99 @@ public class ImageGridRenderer : MonoBehaviour
 
     public float CellSpacing => cellSpacing;
 
+    private Material outlineOffMaterial;
+    private ObjectPool objectPool;
     private bool isReady;
-    private int motionVersion;
-    private readonly List<PixelData> opaqueScratch = new List<PixelData>(1024);
-    private readonly List<PixelCube> cubes = new List<PixelCube>(1024);
-    private Dictionary<Vector2Int, int> gridToInstanceMap;
-    private readonly int[] activeHideKeys = new int[MaxHidePops];
+    private int layoutVersion;
+    private int visibleCount;
+    private int poppingCount;
+    private readonly int[] poppingCubes = new int[MaxConcurrentPops];
+    private readonly List<PixelData> spawnBuffer = new List<PixelData>(1024);
+    private readonly List<PixelCube> activeCubes = new List<PixelCube>(1024);
     private readonly Color32[] tintByLevel = new Color32[MaxPaletteLevel + 1];
     private readonly bool[] tintLevelReady = new bool[MaxPaletteLevel + 1];
-    private int activeHideCount;
-    private int visibleCount;
+    private Dictionary<Vector2Int, int> cellToCube;
 
-    public void BuildPixelGrid(LevelData levelData)
+    [Inject]
+    public void Construct(ObjectPool pool)
     {
-        motionVersion++;
-        activeHideCount = 0;
+        objectPool = pool;
+    }
+
+    public void BuildGridFromLevelData(LevelData levelData)
+    {
+        layoutVersion++;
+        poppingCount = 0;
         isReady = false;
         visibleCount = 0;
+        ReturnCubesToPool();
 
-        if (gridToInstanceMap != null)
-            gridToInstanceMap.Clear();
+        if (cellToCube != null)
+            cellToCube.Clear();
 
-        if (levelData == null || pixelCubePrefab == null)
+        if (levelData == null || objectPool == null)
             return;
 
-        opaqueScratch.Clear();
-        levelData.CopyOpaquePixelsTo(opaqueScratch);
-        PlacePixels(opaqueScratch, levelData.PixelSize);
+        spawnBuffer.Clear();
+        levelData.CopyOpaquePixelsTo(spawnBuffer);
+        PlaceCubesOnGrid(spawnBuffer, levelData.PixelSize);
     }
 
-    private void PlacePixels(IList<PixelData> pixels, Vector2Int textureSize)
-    {
-        if (pixels == null || pixels.Count == 0)
-            return;
-
-        int pixelCount = pixels.Count;
-
-        if (textureSize.x < 1)
-            textureSize.x = 1;
-
-        if (textureSize.y < 1)
-            textureSize.y = 1;
-
-        float halfW = (textureSize.x - 1) * 0.5f;
-        float halfH = (textureSize.y - 1) * 0.5f;
-        Vector3 scale = new Vector3(cellScale, cellScale, cellScale);
-
-        if (gridToInstanceMap == null)
-            gridToInstanceMap = new Dictionary<Vector2Int, int>(pixelCount);
-
-        for (int i = 0; i < pixelCount; i++)
-        {
-            PixelData pixel = pixels[i];
-            PixelCube cube = GetCube(i);
-
-            Transform cubeTransform = cube.root.transform;
-            float localX = (pixel.position.x - halfW) * cellSpacing;
-            float localZ = (pixel.position.y - halfH) * cellSpacing;
-            cubeTransform.localPosition = new Vector3(localX, 0f, localZ);
-            cubeTransform.localRotation = Quaternion.identity;
-            cubeTransform.localScale = scale;
-            cube.renderer.enabled = true;
-            cube.renderer.shadowCastingMode = ShadowCastingMode.On;
-
-            if (instanceMaterial != null)
-                cube.renderer.sharedMaterial = instanceMaterial;
-
-            cube.paletteId = pixel.paletteId;
-            cube.block.SetColor(ColorPropertyId, pixel.color);
-            cube.renderer.SetPropertyBlock(cube.block);
-            gridToInstanceMap[pixel.position] = i;
-        }
-
-        for (int i = pixelCount; i < cubes.Count; i++)
-        {
-            cubes[i].renderer.enabled = false;
-            cubes[i].root.SetActive(false);
-        }
-
-        visibleCount = pixelCount;
-        isReady = true;
-    }
-
-    private PixelCube GetCube(int index)
-    {
-        if (index < cubes.Count)
-        {
-            PixelCube existing = cubes[index];
-            existing.root.SetActive(true);
-            return existing;
-        }
-
-        GameObject cubeObject = Instantiate(pixelCubePrefab, transform);
-        MeshRenderer cubeRenderer = cubeObject.GetComponentInChildren<MeshRenderer>(true);
-        Transform visual = cubeRenderer != null ? cubeRenderer.transform : cubeObject.transform;
-
-        visual.localPosition = Vector3.zero;
-        visual.localRotation = Quaternion.identity;
-        visual.localScale = Vector3.one;
-
-        PixelCube cube = new PixelCube
-        {
-            root = cubeObject,
-            renderer = cubeRenderer,
-            block = new MaterialPropertyBlock()
-        };
-
-        cubes.Add(cube);
-
-        return cube;
-    }
-
-    private bool TryGetCubeIndex(Vector2Int gridPosition, out int cubeIndex)
-    {
-        cubeIndex = 0;
-
-        if (gridToInstanceMap == null)
-            return false;
-
-        return gridToInstanceMap.TryGetValue(gridPosition, out cubeIndex);
-    }
-
-    public bool TryGetWorldPosition(Vector2Int gridPosition, out Vector3 worldPosition)
+    public bool TryGetCubeWorldPosition(Vector2Int gridPosition, out Vector3 worldPosition)
     {
         worldPosition = default;
 
-        if (!TryGetCubeIndex(gridPosition, out int cubeIndex))
+        if (!TryGetCubeIndexAtCell(gridPosition, out int cubeIndex))
             return false;
 
-        worldPosition = cubes[cubeIndex].root.transform.position;
+        worldPosition = activeCubes[cubeIndex].transform.position;
         return true;
     }
 
-    public bool HidePixel(Vector2Int gridPosition)
+    public bool PlayHideCube(Vector2Int gridPosition)
     {
-        if (!TryGetCubeIndex(gridPosition, out int cubeIndex))
+        if (!TryGetCubeIndexAtCell(gridPosition, out int cubeIndex))
             return false;
 
-        for (int i = 0; i < activeHideCount; i++)
-        {
-            if (activeHideKeys[i] == cubeIndex)
-                return true;
-        }
-
-        PixelCube cube = cubes[cubeIndex];
-
-        if (!cube.renderer.enabled)
+        if (IsCubePopAnimationPlaying(cubeIndex))
             return true;
 
-        if (activeHideCount >= MaxHidePops)
+        PixelCube cube = activeCubes[cubeIndex];
+
+        if (cube == null || !cube.Filled || !cube.HasRenderer)
+            return true;
+
+        if (poppingCount >= MaxConcurrentPops)
         {
-            DisablePixel(cube);
+            HideCubeAndRefreshNeighbors(cube);
             return true;
         }
 
-        activeHideKeys[activeHideCount] = cubeIndex;
-        activeHideCount++;
-
-        PlayHide(cubeIndex).Forget();
-
+        poppingCubes[poppingCount] = cubeIndex;
+        poppingCount++;
+        PlayPopThenHideCube(cubeIndex).Forget();
         return true;
     }
 
-    private async UniTaskVoid PlayHide(int cubeIndex)
+    public void HideRemainingCubes()
     {
-        int version = motionVersion;
-        PixelCube cube = cubes[cubeIndex];
-
-        if (cube.renderer != null)
-            cube.renderer.shadowCastingMode = ShadowCastingMode.Off;
-
-        float baseScale = cellScale;
-        float poppedY = cellScale * HidePopY;
-        float elapsed = 0f;
-
-        while (elapsed < HidePunchDuration)
-        {
-            if (version != motionVersion)
-                return;
-
-            elapsed += Time.deltaTime;
-
-            float progress = Mathf.Clamp01(elapsed / HidePunchDuration);
-            float eased = progress * (2f - progress);
-            float height = Mathf.Lerp(baseScale, poppedY, eased);
-
-            ApplyHideScale(cubeIndex, new Vector3(baseScale, height, baseScale));
-
-            await UniTask.Yield(PlayerLoopTiming.Update);
-        }
-
-        elapsed = 0f;
-        while (elapsed < HideCollapseDuration)
-        {
-            if (version != motionVersion)
-                return;
-
-            elapsed += Time.deltaTime;
-
-            float progress = Mathf.Clamp01(elapsed / HideCollapseDuration);
-            float remain = 1f - (progress * progress);
-            ApplyHideScale(cubeIndex, new Vector3(baseScale * remain, poppedY * remain, baseScale * remain));
-
-            await UniTask.Yield(PlayerLoopTiming.Update);
-        }
-
-        if (version != motionVersion)
-            return;
-
-        CompleteHide(cubeIndex);
-    }
-
-    public void HideAllPixels()
-    {
-        motionVersion++;
-        int count = visibleCount < cubes.Count ? visibleCount : cubes.Count;
+        layoutVersion++;
+        int count = visibleCount < activeCubes.Count ? visibleCount : activeCubes.Count;
 
         for (int i = 0; i < count; i++)
         {
-            PixelCube cube = cubes[i];
+            PixelCube cube = activeCubes[i];
 
-            if (cube.root == null || cube.renderer == null || !cube.renderer.enabled)
+            if (cube == null || !cube.Filled || !cube.HasRenderer)
                 continue;
 
-            DisablePixel(cube);
+            HideCubeAndRefreshNeighbors(cube);
         }
 
-        activeHideCount = 0;
+        poppingCount = 0;
     }
 
-    private void CompleteHide(int cubeIndex)
-    {
-        RemoveHideKey(cubeIndex);
-
-        if (cubeIndex < 0 || cubeIndex >= cubes.Count)
-            return;
-
-        DisablePixel(cubes[cubeIndex]);
-    }
-
-    private void ApplyHideScale(int cubeIndex, Vector3 scale)
-    {
-        if (cubeIndex < 0 || cubeIndex >= cubes.Count)
-            return;
-
-        cubes[cubeIndex].root.transform.localScale = scale;
-    }
-
-    private void RemoveHideKey(int key)
-    {
-        for (int i = 0; i < activeHideCount; i++)
-        {
-            if (activeHideKeys[i] != key)
-                continue;
-
-            activeHideCount--;
-            activeHideKeys[i] = activeHideKeys[activeHideCount];
-            return;
-        }
-    }
-
-    private void DisablePixel(PixelCube cube)
-    {
-        cube.root.transform.localScale = Vector3.zero;
-        cube.renderer.enabled = false;
-    }
-
-    private void OnDestroy()
-    {
-        motionVersion++;
-        for (int i = 0; i < cubes.Count; i++)
-        {
-            if (cubes[i].root != null)
-                Destroy(cubes[i].root);
-        }
-
-        cubes.Clear();
-    }
-
-    public void ApplyPaletteColors(int[] levels, Color32[] paletteColors, int paletteCount)
+    public void PaintCubesByPaletteLevel(int[] levels, Color32[] paletteColors, int paletteCount)
     {
         if (!isReady || levels == null || paletteColors == null || paletteCount <= 0)
             return;
@@ -332,26 +154,285 @@ public class ImageGridRenderer : MonoBehaviour
             tintLevelReady[level] = true;
         }
 
-        int count = visibleCount < cubes.Count ? visibleCount : cubes.Count;
+        int count = visibleCount < activeCubes.Count ? visibleCount : activeCubes.Count;
 
         for (int i = 0; i < count; i++)
         {
-            PixelCube cube = cubes[i];
-            int level = cube.paletteId;
+            PixelCube cube = activeCubes[i];
+
+            if (cube == null)
+                continue;
+
+            int level = cube.PaletteId;
 
             if (level <= 0 || level > maxLevel || !tintLevelReady[level])
                 continue;
 
-            cube.block.SetColor(ColorPropertyId, tintByLevel[level]);
-            cube.renderer.SetPropertyBlock(cube.block);
+            cube.PaintCube(tintByLevel[level]);
         }
     }
 
-    private class PixelCube
+    private void PlaceCubesOnGrid(IList<PixelData> pixels, Vector2Int textureSize)
     {
-        public GameObject root;
-        public MeshRenderer renderer;
-        public MaterialPropertyBlock block;
-        public short paletteId;
+        if (pixels == null || pixels.Count == 0)
+            return;
+
+        int pixelCount = pixels.Count;
+
+        if (textureSize.x < 1)
+            textureSize.x = 1;
+
+        if (textureSize.y < 1)
+            textureSize.y = 1;
+
+        float halfWidth = (textureSize.x - 1) * 0.5f;
+        float halfHeight = (textureSize.y - 1) * 0.5f;
+        Vector3 scale = new Vector3(cellScale, cellScale, cellScale);
+
+        if (cellToCube == null)
+            cellToCube = new Dictionary<Vector2Int, int>(pixelCount);
+
+        CreateMaterialWithOutlineDisabled();
+
+        for (int i = 0; i < pixelCount; i++)
+        {
+            PixelData pixel = pixels[i];
+            PixelCube cube = TakeCubeFromPool();
+
+            if (cube == null || !cube.HasRenderer)
+            {
+                if (cube != null)
+                {
+                    cube.DeactivateCube();
+                    objectPool.DestroyToPool(PoolTags.PixelCube, cube.gameObject, false);
+                }
+
+                continue;
+            }
+
+            float localX = (pixel.position.x - halfWidth) * cellSpacing;
+            float localZ = (pixel.position.y - halfHeight) * cellSpacing;
+            cube.PlaceOnGrid(new Vector3(localX, 0f, localZ));
+            cube.SetCubeScale(scale);
+            cube.ActivateCube();
+            cube.StoreCellAndPaint(pixel.position, pixel.color, pixel.paletteId);
+            cellToCube[pixel.position] = activeCubes.Count;
+            activeCubes.Add(cube);
+        }
+
+        for (int i = 0; i < activeCubes.Count; i++)
+            UpdateCubeOutlineAndShadow(activeCubes[i]);
+
+        visibleCount = activeCubes.Count;
+        isReady = true;
+    }
+
+    private PixelCube TakeCubeFromPool()
+    {
+        if (objectPool == null)
+            return null;
+
+        GameObject cubeObject = objectPool.SpawnFromPool(PoolTags.PixelCube, Vector3.zero, Quaternion.identity, false);
+
+        if (cubeObject == null)
+            return null;
+
+        cubeObject.transform.SetParent(transform, false);
+        PixelCube cube = cubeObject.GetComponent<PixelCube>();
+
+        if (cube == null)
+        {
+            objectPool.DestroyToPool(PoolTags.PixelCube, cubeObject);
+            return null;
+        }
+
+        cube.ResetMeshTransform();
+        return cube;
+    }
+
+    private void ReturnCubesToPool()
+    {
+        for (int i = 0; i < activeCubes.Count; i++)
+        {
+            PixelCube cube = activeCubes[i];
+
+            if (cube == null)
+                continue;
+
+            if (objectPool != null)
+            {
+                cube.DeactivateCube();
+                objectPool.DestroyToPool(PoolTags.PixelCube, cube.gameObject, false);
+            }
+            else
+                Destroy(cube.gameObject);
+        }
+
+        activeCubes.Clear();
+    }
+
+    private bool TryGetCubeIndexAtCell(Vector2Int gridPosition, out int cubeIndex)
+    {
+        cubeIndex = 0;
+
+        if (cellToCube == null)
+            return false;
+
+        return cellToCube.TryGetValue(gridPosition, out cubeIndex);
+    }
+
+    private bool IsCubePopAnimationPlaying(int cubeIndex)
+    {
+        for (int i = 0; i < poppingCount; i++)
+        {
+            if (poppingCubes[i] == cubeIndex)
+                return true;
+        }
+
+        return false;
+    }
+
+    private async UniTaskVoid PlayPopThenHideCube(int cubeIndex)
+    {
+        int version = layoutVersion;
+        float baseScale = cellScale;
+        float poppedHeight = cellScale * PopHeightScale;
+        float elapsed = 0f;
+
+        while (elapsed < PopPunchDuration)
+        {
+            if (version != layoutVersion)
+                return;
+
+            elapsed += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(elapsed / PopPunchDuration);
+            float eased = progress * (2f - progress);
+            float height = Mathf.Lerp(baseScale, poppedHeight, eased);
+            SetCubeScaleDuringPop(cubeIndex, new Vector3(baseScale, height, baseScale));
+
+            await UniTask.Yield(PlayerLoopTiming.Update);
+        }
+
+        elapsed = 0f;
+
+        while (elapsed < PopCollapseDuration)
+        {
+            if (version != layoutVersion)
+                return;
+
+            elapsed += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(elapsed / PopCollapseDuration);
+            float remain = 1f - (progress * progress);
+            SetCubeScaleDuringPop(cubeIndex, new Vector3(baseScale * remain, poppedHeight * remain, baseScale * remain));
+
+            await UniTask.Yield(PlayerLoopTiming.Update);
+        }
+
+        if (version != layoutVersion)
+            return;
+
+        HideCubeWhenPopEnds(cubeIndex);
+    }
+
+    private void HideCubeWhenPopEnds(int cubeIndex)
+    {
+        RemoveCubeFromPopAnimation(cubeIndex);
+
+        if (cubeIndex < 0 || cubeIndex >= activeCubes.Count)
+            return;
+
+        HideCubeAndRefreshNeighbors(activeCubes[cubeIndex]);
+    }
+
+    private void SetCubeScaleDuringPop(int cubeIndex, Vector3 scale)
+    {
+        if (cubeIndex < 0 || cubeIndex >= activeCubes.Count)
+            return;
+
+        activeCubes[cubeIndex].SetCubeScale(scale);
+    }
+
+    private void RemoveCubeFromPopAnimation(int cubeIndex)
+    {
+        for (int i = 0; i < poppingCount; i++)
+        {
+            if (poppingCubes[i] != cubeIndex)
+                continue;
+
+            poppingCount--;
+            poppingCubes[i] = poppingCubes[poppingCount];
+            return;
+        }
+    }
+
+    private void HideCubeAndRefreshNeighbors(PixelCube cube)
+    {
+        Vector2Int gridPosition = cube.GridPosition;
+        cube.DeactivateCube();
+        UpdateNeighborOutlineAndShadow(gridPosition);
+    }
+
+    private void UpdateCubeOutlineAndShadow(PixelCube cube)
+    {
+        if (cube == null || !cube.Filled)
+            return;
+
+        int x = cube.GridX;
+        int y = cube.GridY;
+        bool leftFilled = IsPixelFilledAtCell(new Vector2Int(x - 1, y));
+        bool rightFilled = IsPixelFilledAtCell(new Vector2Int(x + 1, y));
+        bool downFilled = IsPixelFilledAtCell(new Vector2Int(x, y - 1));
+        bool upFilled = IsPixelFilledAtCell(new Vector2Int(x, y + 1));
+        bool upLeftFilled = IsPixelFilledAtCell(new Vector2Int(x - 1, y + 1));
+        bool enclosed = leftFilled && rightFilled && downFilled && upFilled;
+
+        cube.SetFakeShadowVisible(!leftFilled || !upFilled || !upLeftFilled);
+        cube.SwitchOutlineMaterial(!enclosed, instanceMaterial, outlineOffMaterial);
+    }
+
+    private void UpdateNeighborOutlineAndShadow(Vector2Int gridPosition)
+    {
+        for (int i = 0; i < ExposedNeighbors.Length; i++)
+        {
+            Vector2Int offset = ExposedNeighbors[i];
+            UpdateOutlineAndShadowAtCell(new Vector2Int(gridPosition.x + offset.x, gridPosition.y + offset.y));
+        }
+    }
+
+    private void UpdateOutlineAndShadowAtCell(Vector2Int gridPosition)
+    {
+        if (!TryGetCubeIndexAtCell(gridPosition, out int cubeIndex))
+            return;
+
+        UpdateCubeOutlineAndShadow(activeCubes[cubeIndex]);
+    }
+
+    private void CreateMaterialWithOutlineDisabled()
+    {
+        if (outlineOffMaterial != null || instanceMaterial == null)
+            return;
+
+        outlineOffMaterial = new Material(instanceMaterial);
+        outlineOffMaterial.SetShaderPassEnabled(OutlinePassName, false);
+    }
+
+    private bool IsPixelFilledAtCell(Vector2Int gridPosition)
+    {
+        if (!TryGetCubeIndexAtCell(gridPosition, out int cubeIndex))
+            return false;
+
+        PixelCube cube = activeCubes[cubeIndex];
+        return cube != null && cube.Filled;
+    }
+
+    private void OnDestroy()
+    {
+        layoutVersion++;
+        ReturnCubesToPool();
+
+        if (outlineOffMaterial != null)
+            Destroy(outlineOffMaterial);
     }
 }

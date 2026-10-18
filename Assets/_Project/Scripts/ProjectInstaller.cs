@@ -1,4 +1,5 @@
 using LevelManagement;
+using PixelShooter.Pooling;
 using PixelShooter.Save;
 using PixelShooter.Settings;
 using UnityEngine;
@@ -9,6 +10,7 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
 {
     [SerializeField] private LevelDatabase levelDatabase;
     [SerializeField] private AudioMixer masterMixer;
+    [SerializeField] private ObjectPool objectPoolPrefab;
 
     public override void InstallBindings()
     {
@@ -24,6 +26,10 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
     private void InstallManagers()
     {
         Container.Bind<SceneChanger>().AsSingle();
+
+        if (objectPoolPrefab != null)
+            Container.Bind<ObjectPool>().FromComponentInNewPrefab(objectPoolPrefab).AsSingle().NonLazy();
+
         Container.Bind<LevelDatabase>().FromInstance(levelDatabase).AsSingle();
         Container.Bind<AudioMixer>().FromInstance(masterMixer).AsSingle();
         Container.BindInterfacesAndSelfTo<SaveManager>().AsSingle();

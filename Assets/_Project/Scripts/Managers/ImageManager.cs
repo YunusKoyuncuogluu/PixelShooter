@@ -125,7 +125,7 @@ public class ImageManager
         ApplyLevelPaletteSwatches();
 
         if (imageGridRenderer != null)
-            imageGridRenderer.ApplyPaletteColors(shooterLevels, shooterColorsByLevel, shooterColorCount);
+            imageGridRenderer.PaintCubesByPaletteLevel(shooterLevels, shooterColorsByLevel, shooterColorCount);
 
     }
 
@@ -174,7 +174,7 @@ public class ImageManager
         worldPositions[flat] = Vector3.zero;
 
         if (imageGridRenderer != null)
-            imageGridRenderer.HidePixel(gridPos);
+            imageGridRenderer.PlayHideCube(gridPos);
 
         opaqueRemaining--;
         if (opaqueRemaining < 0)
@@ -183,7 +183,7 @@ public class ImageManager
         if (opaqueRemaining == 0)
         {
             if (imageGridRenderer != null)
-                imageGridRenderer.HideAllPixels();
+                imageGridRenderer.HideRemainingCubes();
             OnImageCleared?.Invoke();
         }
     }
@@ -499,7 +499,7 @@ public class ImageManager
     private Vector3 ResolveWorldPosition(Vector2Int gridPos)
     {
         if (imageGridRenderer != null &&
-            imageGridRenderer.TryGetWorldPosition(gridPos, out Vector3 fromRenderer))
+            imageGridRenderer.TryGetCubeWorldPosition(gridPos, out Vector3 fromRenderer))
         {
             return fromRenderer;
         }

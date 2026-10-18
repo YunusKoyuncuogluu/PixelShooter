@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Zenject;
 
 namespace PixelShooter.Pooling
@@ -20,6 +21,7 @@ namespace PixelShooter.Pooling
 
         private Transform poolRoot;
         private Dictionary<PoolTags, Queue<GameObject>> poolDictionary;
+        private Dictionary<PoolTags, List<GameObject>> poolInstances;
 
         [Inject]
         private void Construct()
@@ -36,6 +38,7 @@ namespace PixelShooter.Pooling
             rootObject.transform.SetParent(transform, false);
             poolRoot = rootObject.transform;
             poolDictionary = new Dictionary<PoolTags, Queue<GameObject>>(pools.Count);
+            poolInstances = new Dictionary<PoolTags, List<GameObject>>(pools.Count);
 
             for (int i = 0; i < pools.Count; i++)
             {
@@ -51,6 +54,8 @@ namespace PixelShooter.Pooling
                 pool.poolParent.SetParent(poolRoot, false);
 
                 Queue<GameObject> objectPool = new Queue<GameObject>(pool.size);
+                poolInstances.Add(pool.tag, new List<GameObject>(pool.size));
+
                 for (int j = 0; j < pool.size; j++)
                 {
                     GameObject instance = CreateInstance(pool);
@@ -62,31 +67,58 @@ namespace PixelShooter.Pooling
             }
         }
 
-        public GameObject SpawnFromPool(PoolTags poolTag, Vector3 position, Quaternion rotation)
+        public GameObject SpawnFromPool(PoolTags poolTag, Vector3 position, Quaternion rotation, bool activate = true)
         {
             if (poolDictionary == null || !poolDictionary.ContainsKey(poolTag))
                 return null;
 
             Queue<GameObject> queue = poolDictionary[poolTag];
-            if (queue.Count == 0)
-                SpawnNewObject(poolTag, 1);
+
+            while (queue.Count > 0)
+            {
+                GameObject objectToSpawn = queue.Dequeue();
+
+                if (objectToSpawn == null)
+                    continue;
+
+                objectToSpawn.transform.SetPositionAndRotation(position, rotation);
+
+                if (activate && !objectToSpawn.activeSelf)
+                    objectToSpawn.SetActive(true);
+
+                return objectToSpawn;
+            }
+
+            SpawnNewObject(poolTag, 1);
 
             if (queue.Count == 0)
                 return null;
 
-            GameObject objectToSpawn = queue.Dequeue();
-            objectToSpawn.transform.SetPositionAndRotation(position, rotation);
-            objectToSpawn.SetActive(true);
+            GameObject created = queue.Dequeue();
 
-            return objectToSpawn;
+            if (created == null)
+                return null;
+
+            created.transform.SetPositionAndRotation(position, rotation);
+
+            if (activate && !created.activeSelf)
+                created.SetActive(true);
+
+            return created;
         }
 
-        public void DestroyToPool(PoolTags poolTag, GameObject poolObject)
+        public void DestroyToPool(PoolTags poolTag, GameObject poolObject, bool deactivate = true)
         {
             if (poolObject == null || poolDictionary == null || !poolDictionary.ContainsKey(poolTag))
                 return;
 
-            poolObject.SetActive(false);
+            Transform parent = FindPoolParent(poolTag);
+
+            if (parent != null)
+                poolObject.transform.SetParent(parent, false);
+
+            if (deactivate && poolObject.activeSelf)
+                poolObject.SetActive(false);
             IPoolObject poolBehaviour = poolObject.GetComponent<IPoolObject>();
 
             if (poolBehaviour != null)
@@ -117,7 +149,70 @@ namespace PixelShooter.Pooling
             GameObject instance = Instantiate(pool.prefab, pool.poolParent, false);
             instance.SetActive(false);
 
+            if (poolInstances != null && poolInstances.TryGetValue(pool.tag, out List<GameObject> instances))
+                instances.Add(instance);
+
             return instance;
+        }
+
+        private Transform FindPoolParent(PoolTags poolTag)
+        {
+            for (int i = 0; i < pools.Count; i++)
+            {
+                Pool pool = pools[i];
+
+                if (pool == null || pool.tag != poolTag)
+                    continue;
+
+                return pool.poolParent;
+            }
+
+            return null;
+        }
+
+        private void OnEnable()
+        {
+            SceneManager.sceneUnloaded += OnSceneUnloaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
+        }
+
+        private void OnSceneUnloaded(Scene unusedScene)
+        {
+            RecallActive();
+        }
+
+        private void RecallActive()
+        {
+            if (poolInstances == null)
+                return;
+
+            for (int i = 0; i < pools.Count; i++)
+            {
+                Pool pool = pools[i];
+
+                if (pool == null || !poolInstances.TryGetValue(pool.tag, out List<GameObject> instances))
+                    continue;
+
+                for (int j = instances.Count - 1; j >= 0; j--)
+                {
+                    GameObject instance = instances[j];
+
+                    if (instance == null)
+                    {
+                        instances.RemoveAt(j);
+                        continue;
+                    }
+
+                    if (!instance.activeSelf)
+                        continue;
+
+                    DestroyToPool(pool.tag, instance);
+                }
+            }
         }
     }
 
@@ -126,6 +221,7 @@ namespace PixelShooter.Pooling
         None = 0,
         Bullet = 1,
         AudioVoice = 2,
-        TravelSpline = 3
+        TravelSpline = 3,
+        PixelCube = 4
     }
 }

@@ -234,7 +234,7 @@ public class ShooterController : MonoBehaviour
         isOnConveyor = true;
         ammoAtLapStart = RemainingShots;
         conveyorEnterTime = Time.time;
-        DetachFromSeat();
+        LockToSeat();
         ShowAmmoCount(true);
         firedSide = -1;
         firedLane = int.MinValue;
@@ -289,7 +289,8 @@ public class ShooterController : MonoBehaviour
             if (runCompleted && inFlightShots <= 0)
                 break;
 
-            await UniTask.Yield(PlayerLoopTiming.LastPostLateUpdate, cancellationToken);
+            // SplineFollower moves the plate in Update. LastPostLateUpdate runs after the frame is presented, so a position copy there leaves the shooter one frame behind (obvious at low FPS).
+            await UniTask.Yield(PlayerLoopTiming.LastPreLateUpdate, cancellationToken);
             FaceGridCenter(false);
             TryFire(capacity, cancellationToken);
         }
@@ -298,14 +299,21 @@ public class ShooterController : MonoBehaviour
             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
     }
 
-    private void DetachFromSeat()
+    private void LockToSeat()
     {
-        Transform parent = transform.parent;
-        if (parent == null)
+        if (plateQueueManager == null)
             return;
 
-        seatAnchor = parent;
-        transform.SetParent(null, true);
+        Plate plate = plateQueueManager.GetBoundPlate(this);
+        if (plate == null)
+            return;
+
+        Transform seat = plate.SeatPoint;
+        if (transform.parent != seat)
+            transform.SetParent(seat, true);
+
+        seatAnchor = seat;
+        transform.localPosition = Vector3.zero;
     }
 
     private void TryFire(int capacity, CancellationToken cancellationToken)
@@ -402,8 +410,6 @@ public class ShooterController : MonoBehaviour
     private void FaceGridCenter(bool snap)
     {
         Vector3 position = seatAnchor != null ? seatAnchor.position : transform.position;
-        if (seatAnchor != null)
-            transform.position = position;
 
         if (imageManager == null)
             return;
@@ -615,8 +621,12 @@ public class ShooterController : MonoBehaviour
         cachedFollower.transform.position = endPosition;
 
         if (seatAnchor != null)
-            transform.position = seatAnchor.position;
-        else if (cachedFollower.transform != transform)
+        {
+            transform.localPosition = Vector3.zero;
+            return;
+        }
+
+        if (cachedFollower.transform != transform)
             transform.position = endPosition;
     }
 

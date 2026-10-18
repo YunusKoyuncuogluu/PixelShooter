@@ -75,4 +75,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   levelDatabase: {fileID: 11400000, guid: 9e2b6d4f8a1c4e7b0d3f5a6c8b9e1d02, type: 2}
-  masterMixer: {fileID: 24100000, guid: 6f48f2c6a75b14710bf94307040ee527, type: 2} 
+  masterMixer: {fileID: 24100000, guid: 6f48f2c6a75b14710bf94307040ee527, type: 2}
+  objectPoolPrefab: {fileID: 8622582206631468190, guid: c3a91e7b4d2f4a6e8b0c1d5f6a7e8c11, type: 3} 

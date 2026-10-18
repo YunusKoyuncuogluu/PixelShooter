@@ -104,4 +104,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   bulletRenderer: {fileID: 100004}
-  flightDuration: 0.15
+  flightDuration: 0.2
