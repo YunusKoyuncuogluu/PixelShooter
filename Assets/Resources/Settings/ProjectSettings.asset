@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce892e3b82483024b8abf5bb38e79397, type: 3}
   m_Name: ProjectSettings
   m_EditorClassIdentifier: 
-  m_FacadeProperties:
+  facadeProperties:
   - level: 1
     facadeName: Red
     color: {r: 0.9019608, g: 0.19215687, b: 0.28235295, a: 1}
@@ -87,7 +87,7 @@ MonoBehaviour:
     color: {r: 0.7254902, g: 0.5137255, b: 0.3254902, a: 1}
     shooterMaterials:
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
-  m_OriginalFacadeProperties:
+  originalFacadeProperties:
   - level: 1
     facadeName: Red
     color: {r: 0.8490566, g: 0, b: 0.10654827, a: 1}
@@ -162,3 +162,7 @@ MonoBehaviour:
     color: {r: 0.7254902, g: 0.5137255, b: 0.3254902, a: 1}
     shooterMaterials:
     - {fileID: 2100000, guid: 383055eb9b78d6e4a9f5896d3ee1b4a5, type: 2}
+  useHandCursor: 0
+  handIdle: {fileID: -1360037873, guid: 9604483fee361c949afb89eb3263f7ea, type: 3}
+  handPressed: {fileID: -1918193424, guid: 9604483fee361c949afb89eb3263f7ea, type: 3}
+  handCursorHeight: 220

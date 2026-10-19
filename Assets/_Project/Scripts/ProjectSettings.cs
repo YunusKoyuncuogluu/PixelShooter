@@ -58,4 +58,25 @@ public class ProjectSettings : ScriptableObject
     }
 
     #endregion
+
+    #region Recording
+
+    [SerializeField, FoldoutGroup("Recording")]
+    private bool useHandCursor;
+
+    [SerializeField, FoldoutGroup("Recording")]
+    private Sprite handIdle;
+
+    [SerializeField, FoldoutGroup("Recording")]
+    private Sprite handPressed;
+
+    [SerializeField, FoldoutGroup("Recording")]
+    private float handCursorHeight = 220f;
+
+    public bool UseHandCursor => useHandCursor;
+    public Sprite HandIdle => handIdle;
+    public Sprite HandPressed => handPressed;
+    public float HandCursorHeight => handCursorHeight;
+
+    #endregion
 }

@@ -11,6 +11,7 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
     [SerializeField] private LevelDatabase levelDatabase;
     [SerializeField] private AudioMixer masterMixer;
     [SerializeField] private ObjectPool objectPoolPrefab;
+    [SerializeField] private HandCursorController handCursorPrefab;
 
     private const int TargetFrameRate = 60;
 
@@ -44,5 +45,7 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
         Container.BindInterfacesAndSelfTo<SaveManager>().AsSingle();
         Container.BindInterfacesAndSelfTo<SettingsManager>().AsSingle();
         Container.Bind<LevelManager>().AsSingle();
+        if (handCursorPrefab != null)
+            Container.Bind<HandCursorController>().FromComponentInNewPrefab(handCursorPrefab).AsSingle().NonLazy();
     }
 }
