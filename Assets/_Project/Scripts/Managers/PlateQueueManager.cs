@@ -109,7 +109,7 @@ public class PlateQueueManager : MonoBehaviour
             GetConveyorStartPose(plate, out Vector3 flatPos, out Quaternion flatRot);
             Vector3 seatWorld = plate.PredictSeatWorldPosition(flatPos, flatRot);
 
-            Shooter shooter = shooterController.GetComponent<Shooter>();
+            Shooter shooter = shooterController.Owner;
             float travelSpeed = shooter != null ? shooter.PlateTravelSpeed : 20f;
             float travelArc = plate.RandomTravelArcHeight();
             UniTask deployTask = plate.DeployFlatAsync(flatPos, flatRot, linked);

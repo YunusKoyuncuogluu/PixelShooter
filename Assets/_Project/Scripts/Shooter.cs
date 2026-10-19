@@ -124,6 +124,8 @@ public class Shooter : MonoBehaviour
         }
     }
 
+    public ShooterController Controller => GetController();
+
     private ShooterController GetController()
     {
         if (shooterController == null)
@@ -134,10 +136,10 @@ public class Shooter : MonoBehaviour
 
     private void SetStartColor(ShooterData data)
     {
-        List<FacadeProperty> facadeProperties = projectSettings.GetOriginalFacadeProperties();
-        Material[] originalMaterials = facadeProperties[(int)data.Color - 1].ShooterMaterials;
+        FacadeProperty facade = projectSettings.GetOriginalFacade((int)data.Color - 1);
+        Material[] originalMaterials = facade != null ? facade.ShooterMaterials : null;
         shooterMaterial = originalMaterials != null && originalMaterials.Length > 0 ? originalMaterials[0] : null;
-        shooterColor = facadeProperties[(int)data.Color - 1].Color;
+        shooterColor = facade != null ? facade.Color : shooterColor;
         CacheOpenOutlineWidth();
         SetMaterial(isQuestionShooter);
     }

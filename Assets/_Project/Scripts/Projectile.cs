@@ -41,10 +41,17 @@ public class Projectile : MonoBehaviour, IPoolObject
 
         float elapsed = 0f;
 
+        float maxStep = flightDuration * 0.34f;
+
         while (elapsed < flightDuration)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            elapsed += Time.deltaTime;
+            float step = Time.unscaledDeltaTime;
+
+            if (step > maxStep)
+                step = maxStep;
+
+            elapsed += step;
             float progress = Mathf.Clamp01(elapsed / flightDuration);
 
             transform.position = Vector3.LerpUnclamped(start, target, progress);

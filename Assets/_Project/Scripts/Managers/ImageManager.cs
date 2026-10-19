@@ -8,6 +8,7 @@ using Zenject;
 public class ImageManager
 {
     private const short EmptyPaletteId = -1;
+    private const int UnreservedCapacity = 32;
 
     private enum ApproachSide : byte
     {
@@ -32,6 +33,9 @@ public class ImageManager
     private short[] paletteIds;
     private bool[] reserved;
     private Vector3[] worldPositions;
+    private readonly int[] unreservedCounts = new int[UnreservedCapacity];
+    private int unreservedTotal;
+    private bool unreservedOverflow;
     private bool isBuilt;
 
     private float boundsMinX;
@@ -84,8 +88,11 @@ public class ImageManager
         worldPositions = new Vector3[cellCount];
 
         PixelCellData[,] grid = levelData.PixelGrid;
+        int gridColumns = grid.GetLength(0);
+        int gridRows = grid.GetLength(1);
         int opaque = 0;
         int missingPalette = 0;
+        ClearUnreservedCounts();
 
         for (int y = 0; y < gridHeight; y++)
         {
@@ -93,7 +100,7 @@ public class ImageManager
             {
                 int flat = ToFlatIndex(x, y);
                 PixelCellData cell = null;
-                if (x < grid.GetLength(0) && y < grid.GetLength(1))
+                if (x < gridColumns && y < gridRows)
                     cell = grid[x, y];
 
                 if (cell == null || !cell.HasPixel)
@@ -114,6 +121,7 @@ public class ImageManager
 
                 paletteIds[flat] = bakedId;
                 worldPositions[flat] = ResolveWorldPosition(new Vector2Int(x, y));
+                AddUnreserved(bakedId);
                 opaque++;
             }
         }
@@ -169,8 +177,13 @@ public class ImageManager
         if (paletteIds[flat] == EmptyPaletteId)
             return;
 
+        bool wasReserved = reserved[flat];
+        short clearedId = paletteIds[flat];
         reserved[flat] = false;
         paletteIds[flat] = EmptyPaletteId;
+
+        if (!wasReserved)
+            RemoveUnreserved(clearedId);
         worldPositions[flat] = Vector3.zero;
 
         if (imageGridRenderer != null)
@@ -190,10 +203,16 @@ public class ImageManager
 
     public void ReleaseReservation(Vector2Int gridPos)
     {
-        if (!isBuilt || reserved == null || !IsInsideGrid(gridPos))
+        if (!isBuilt || reserved == null || paletteIds == null || !IsInsideGrid(gridPos))
             return;
 
-        reserved[ToFlatIndex(gridPos.x, gridPos.y)] = false;
+        int flat = ToFlatIndex(gridPos.x, gridPos.y);
+
+        if (!reserved[flat])
+            return;
+
+        reserved[flat] = false;
+        AddUnreserved(paletteIds[flat]);
     }
 
     public bool IsImageCleared() => isBuilt && opaqueRemaining <= 0;
@@ -210,28 +229,64 @@ public class ImageManager
         if (!isBuilt || paletteIds == null || reserved == null)
             return 0;
 
-        int total = 0;
-        int cellCount = paletteIds.Length;
-        for (int i = 0; i < cellCount; i++)
+        if (unreservedOverflow)
+            return -1;
+
+        int copyCount = bucketCount < unreservedCounts.Length ? bucketCount : unreservedCounts.Length;
+
+        for (int i = 0; i < copyCount; i++)
+            counts[i] = unreservedCounts[i];
+
+        return unreservedTotal;
+    }
+
+    private void ClearUnreservedCounts()
+    {
+        int bucketCount = unreservedCounts.Length;
+
+        for (int i = 0; i < bucketCount; i++)
+            unreservedCounts[i] = 0;
+
+        unreservedTotal = 0;
+        unreservedOverflow = false;
+    }
+
+    private void AddUnreserved(short paletteId)
+    {
+        if (paletteId <= 0)
+            return;
+
+        if (paletteId >= unreservedCounts.Length)
         {
-            short paletteId = paletteIds[i];
-            if (paletteId <= 0 || reserved[i])
-                continue;
-
-            if (paletteId >= bucketCount)
-                return -1;
-
-            counts[paletteId]++;
-            total++;
+            unreservedOverflow = true;
+            return;
         }
 
-        return total;
+        unreservedCounts[paletteId]++;
+        unreservedTotal++;
+    }
+
+    private void RemoveUnreserved(short paletteId)
+    {
+        if (paletteId <= 0 || paletteId >= unreservedCounts.Length)
+            return;
+
+        if (unreservedCounts[paletteId] <= 0)
+            return;
+
+        unreservedCounts[paletteId]--;
+
+        if (unreservedTotal > 0)
+            unreservedTotal--;
     }
 
     public bool HasRemainingPixelsOfPaletteId(short targetPaletteId)
     {
         if (!isBuilt || paletteIds == null || targetPaletteId <= 0)
             return false;
+
+        if (!unreservedOverflow && targetPaletteId < unreservedCounts.Length)
+            return unreservedCounts[targetPaletteId] > 0;
 
         int count = paletteIds.Length;
         for (int i = 0; i < count; i++)
@@ -303,6 +358,7 @@ public class ImageManager
             return false;
 
         reserved[flat] = true;
+        RemoveUnreserved(paletteIds[flat]);
         return true;
     }
 

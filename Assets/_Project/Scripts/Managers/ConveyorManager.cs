@@ -87,7 +87,7 @@ public class ConveyorManager : MonoBehaviour
         if (activeShooters.Contains(shooterController))
             return true;
 
-        Shooter shooter = shooterController.GetComponent<Shooter>();
+        Shooter shooter = shooterController.Owner;
         if (shooter != null)
             slotManager.RemoveShooter(shooter);
 
@@ -185,7 +185,7 @@ public class ConveyorManager : MonoBehaviour
             return;
         }
 
-        Shooter shooter = shooterController.GetComponent<Shooter>();
+        Shooter shooter = shooterController.Owner;
         slotManager.ForcePlaceShooter(shooter, freeSlot);
         shooterController.ReturnToSlot(freeSlot);
 
@@ -208,7 +208,7 @@ public class ConveyorManager : MonoBehaviour
 
         SplineExtensions.ClearExistingFollowers(plate.gameObject, objectPool);
 
-        Shooter shooter = shooterController.GetComponent<Shooter>();
+        Shooter shooter = shooterController.Owner;
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;
 
         SplineFollower follower = plate.GetTravelFollower();
@@ -259,7 +259,7 @@ public class ConveyorManager : MonoBehaviour
 
     private void AttachShooterFollowerFallback(ShooterController shooterController)
     {
-        Shooter shooter = shooterController.GetComponent<Shooter>();
+        Shooter shooter = shooterController.Owner;
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;
 
         SplineFollower follower = shooterController.GetTravelFollower();

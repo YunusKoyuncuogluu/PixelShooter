@@ -45,6 +45,7 @@ public class ShooterController : MonoBehaviour
 
     public int MaxCapacity => maxCapacity > 0 ? maxCapacity : 0;
     public SplineFollower CachedFollower => cachedFollower;
+    public Shooter Owner => shooter != null ? shooter : shooter = GetComponent<Shooter>();
     public short PaletteId => shooterPaletteId;
 
     public int RemainingShots => Mathf.Max(0, MaxCapacity - currentFill - inFlightShots);
@@ -385,10 +386,16 @@ public class ShooterController : MonoBehaviour
                 out Vector3 pixelWorldPos))
             return;
 
-        GameObject projectileObject = objectPool != null
-            ? objectPool.SpawnFromPool(PoolTags.Bullet, Vector3.zero, Quaternion.identity)
-            : null;
-        Projectile projectile = projectileObject != null ? projectileObject.GetComponent<Projectile>() : null;
+        GameObject projectileObject = null;
+        Projectile projectile = null;
+
+        if (objectPool != null)
+        {
+            projectileObject = objectPool.SpawnFromPool(PoolTags.Bullet, Vector3.zero, Quaternion.identity);
+
+            if (projectileObject != null && objectPool.TryGetPoolBehaviour(projectileObject, out IPoolObject behaviour))
+                projectile = behaviour as Projectile;
+        }
 
         if (projectile == null)
         {
@@ -574,7 +581,7 @@ public class ShooterController : MonoBehaviour
         if (other == null || other.gameObject == gameObject)
             return false;
 
-        ShooterController controller = other.GetComponent<ShooterController>();
+        ShooterController controller = other.Controller;
 
         if (controller == null || controller.RemainingShots <= 0)
             return false;

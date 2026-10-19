@@ -33,6 +33,14 @@ public class ProjectSettings : ScriptableObject
         return CloneFacadeProperties(originalFacadeProperties);
     }
 
+    public FacadeProperty GetOriginalFacade(int index)
+    {
+        if (originalFacadeProperties == null || index < 0 || index >= originalFacadeProperties.Count)
+            return null;
+
+        return originalFacadeProperties[index];
+    }
+
     private List<FacadeProperty> CloneFacadeProperties(List<FacadeProperty> facadeProperties)
     {
         List<FacadeProperty> clonedList = new List<FacadeProperty>();

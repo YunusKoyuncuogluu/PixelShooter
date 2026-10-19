@@ -66,7 +66,8 @@ namespace PixelShooter.Pooling
                 if (voiceObject == null)
                     return;
 
-                voice = voiceObject.GetComponent<PooledAudioVoice>();
+                if (objectPool.TryGetPoolBehaviour(voiceObject, out IPoolObject behaviour))
+                    voice = behaviour as PooledAudioVoice;
                 if (voice == null)
                 {
                     objectPool.DestroyToPool(PoolTags.AudioVoice, voiceObject);

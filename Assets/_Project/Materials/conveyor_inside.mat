@@ -17,13 +17,13 @@ Material:
   - TCP2_SHADOW_LIGHT_COLOR
   - _ALPHATEST_ON
   m_InvalidKeywords:
+  - TCP2_COLORS_AS_NORMALS
   - TCP2_UV_NORMALS_FULL
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2450
-  stringTagMap:
-    RenderType: TransparentCutout
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
   m_LockedProperties: 
@@ -84,7 +84,7 @@ Material:
     - _IndirectIntensityOutline: 0
     - _MatCapMaskChannel: 0
     - _MatCapType: 0
-    - _NormalsSource: 0
+    - _NormalsSource: 1
     - _NormalsUVType: 0
     - _OcclusionChannel: 0
     - _OcclusionStrength: 1

@@ -12,10 +12,19 @@ public class ProjectInstaller : MonoInstaller<ProjectInstaller>
     [SerializeField] private AudioMixer masterMixer;
     [SerializeField] private ObjectPool objectPoolPrefab;
 
+    private const int TargetFrameRate = 60;
+
     public override void InstallBindings()
     {
+        ApplyFrameRate();
         InstallSettings();
         InstallManagers();
+    }
+
+    private void ApplyFrameRate()
+    {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = TargetFrameRate;
     }
 
     private void InstallSettings()

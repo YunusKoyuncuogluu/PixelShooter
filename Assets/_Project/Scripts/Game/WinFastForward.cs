@@ -169,7 +169,7 @@ namespace PixelShooter.Game
             for (int i = 0; i < shooterCount; i++)
             {
                 ShooterController controller = conveyor.GetActiveShooter(i);
-                Shooter shooter = controller != null ? controller.GetComponent<Shooter>() : null;
+                Shooter shooter = controller != null ? controller.Owner : null;
                 GeneralColor fallback = shooter != null ? shooter.Color : GeneralColor.None;
                 AddControllerAmmo(controller, fallback);
             }
@@ -184,7 +184,7 @@ namespace PixelShooter.Game
                 if (shooter == null)
                     continue;
 
-                AddControllerAmmo(shooter.GetComponent<ShooterController>(), shooter.Color);
+                AddControllerAmmo(shooter.Controller, shooter.Color);
             }
         }
 
@@ -230,7 +230,7 @@ namespace PixelShooter.Game
                     if (shooter == null)
                         continue;
 
-                    ShooterController controller = shooter.GetComponent<ShooterController>();
+                    ShooterController controller = shooter.Controller;
                     int shots = controller != null ? controller.RemainingShots : 0;
                     int paletteId = imageManager.ResolvePaletteId(shooter.Color);
 
@@ -272,7 +272,7 @@ namespace PixelShooter.Game
                 if (shooter == null || !shooter.IsHeldInSlot)
                     continue;
 
-                ShooterController controller = shooter.GetComponent<ShooterController>();
+                ShooterController controller = shooter.Controller;
                 if (controller == null || controller.RemainingShots <= 0)
                     continue;
 

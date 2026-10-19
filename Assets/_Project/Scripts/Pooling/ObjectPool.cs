@@ -22,6 +22,7 @@ namespace PixelShooter.Pooling
         private Transform poolRoot;
         private Dictionary<PoolTags, Queue<GameObject>> poolDictionary;
         private Dictionary<PoolTags, List<GameObject>> poolInstances;
+        private Dictionary<GameObject, IPoolObject> poolBehaviours;
 
         [Inject]
         private void Construct()
@@ -39,6 +40,7 @@ namespace PixelShooter.Pooling
             poolRoot = rootObject.transform;
             poolDictionary = new Dictionary<PoolTags, Queue<GameObject>>(pools.Count);
             poolInstances = new Dictionary<PoolTags, List<GameObject>>(pools.Count);
+            poolBehaviours = new Dictionary<GameObject, IPoolObject>(256);
 
             for (int i = 0; i < pools.Count; i++)
             {
@@ -119,9 +121,8 @@ namespace PixelShooter.Pooling
 
             if (deactivate && poolObject.activeSelf)
                 poolObject.SetActive(false);
-            IPoolObject poolBehaviour = poolObject.GetComponent<IPoolObject>();
 
-            if (poolBehaviour != null)
+            if (TryGetPoolBehaviour(poolObject, out IPoolObject poolBehaviour))
                 poolBehaviour.Reset();
 
             poolDictionary[poolTag].Enqueue(poolObject);
@@ -148,11 +149,44 @@ namespace PixelShooter.Pooling
         {
             GameObject instance = Instantiate(pool.prefab, pool.poolParent, false);
             instance.SetActive(false);
+            RememberBehaviour(instance);
 
             if (poolInstances != null && poolInstances.TryGetValue(pool.tag, out List<GameObject> instances))
                 instances.Add(instance);
 
             return instance;
+        }
+
+        public bool TryGetPoolBehaviour(GameObject poolObject, out IPoolObject behaviour)
+        {
+            behaviour = null;
+
+            if (poolObject == null)
+                return false;
+
+            if (poolBehaviours != null && poolBehaviours.TryGetValue(poolObject, out behaviour) && behaviour != null)
+                return true;
+
+            behaviour = poolObject.GetComponent<IPoolObject>();
+
+            if (behaviour == null)
+                return false;
+
+            if (poolBehaviours != null)
+                poolBehaviours[poolObject] = behaviour;
+
+            return true;
+        }
+
+        private void RememberBehaviour(GameObject instance)
+        {
+            if (instance == null || poolBehaviours == null || poolBehaviours.ContainsKey(instance))
+                return;
+
+            IPoolObject behaviour = instance.GetComponent<IPoolObject>();
+
+            if (behaviour != null)
+                poolBehaviours.Add(instance, behaviour);
         }
 
         private Transform FindPoolParent(PoolTags poolTag)
