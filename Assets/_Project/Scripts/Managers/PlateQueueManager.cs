@@ -111,7 +111,8 @@ public class PlateQueueManager : MonoBehaviour
 
             Shooter shooter = shooterController.Owner;
             float travelSpeed = shooter != null ? shooter.PlateTravelSpeed : 20f;
-            float travelArc = plate.RandomTravelArcHeight();
+            float travelArc = shooter != null ? shooter.RandomPlateArcHeight() : 7f;
+            float travelDistanceMultiplier = shooter != null ? shooter.PlateDistanceMultiplier : 0.08f;
             UniTask deployTask = plate.DeployFlatAsync(flatPos, flatRot, linked);
             UniTask slideTask = SlideQueueForwardAsync(linked);
             UniTask travelTask = shooterController.gameObject.FollowToAsync(
@@ -120,7 +121,8 @@ public class PlateQueueManager : MonoBehaviour
                 travelSpeed,
                 travelArc,
                 null,
-                linked);
+                linked,
+                travelDistanceMultiplier);
 
             await UniTask.WhenAll(deployTask, slideTask, travelTask);
 
@@ -173,44 +175,19 @@ public class PlateQueueManager : MonoBehaviour
     public void GetConveyorStartPose(Plate settingsSource, out Vector3 position, out Quaternion rotation)
     {
         float yOffset = settingsSource != null ? settingsSource.BoardingYOffset : 0f;
-        Vector3 flatEuler = settingsSource != null ? settingsSource.FlatEuler : Vector3.zero;
-
-        if (conveyorSpline != null)
-        {
-            SplineSample sample = conveyorSpline.Evaluate(0.0);
-            Vector3 forward = sample.forward;
-            forward.y = 0f;
-            if (forward.sqrMagnitude > 0.0001f)
-                rotation = Quaternion.LookRotation(forward.normalized, Vector3.up) * Quaternion.Euler(flatEuler);
-            else
-                rotation = Quaternion.Euler(flatEuler);
-
-            if (boardingAnchor != null)
-            {
-                position = boardingAnchor.position;
-                position.y += yOffset;
-            }
-            else
-            {
-                position = sample.position;
-                position.y += yOffset;
-            }
-
-            return;
-        }
+        Vector3 euler = settingsSource != null ? settingsSource.BoardingEuler : new Vector3(0f, 90f, 180f);
+        rotation = Quaternion.Euler(euler);
 
         if (boardingAnchor != null)
         {
             position = boardingAnchor.position;
             position.y += yOffset;
-            rotation = boardingAnchor.rotation * Quaternion.Euler(flatEuler);
-
             return;
         }
 
         Transform origin = queueOrigin != null ? queueOrigin : transform;
         position = origin.position;
-        rotation = origin.rotation * Quaternion.Euler(flatEuler);
+        position.y += yOffset;
     }
 
     private async UniTask SlideQueueForwardAsync(CancellationToken cancellationToken)

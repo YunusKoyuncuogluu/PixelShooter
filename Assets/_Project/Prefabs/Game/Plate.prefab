@@ -53,13 +53,14 @@ MonoBehaviour:
   queueOppositeToTravel: 1
   verticalEuler: {x: 90, y: 0, z: 0}
   slideDuration: 0.22
-  flatEuler: {x: 0, y: 0, z: 0}
-  passengerLocalEuler: {x: 90, y: 0, z: 0}
+  boardingEuler: {x: 0, y: 90, z: 180}
   boardingYOffset: 0
-  deployTravelSpeed: 18
-  deployArcHeight: 2
-  travelArcHeightMin: 4.5
-  travelArcHeightMax: 7.5
+  boardingDuration: 0.25
+  boardingMoveEase: 1
+  boardingRotateEase: 1
+  returnTravelSpeed: 18
+  returnArcHeight: 7.5
+  returnDistanceMultiplier: 0.12
 --- !u!1 &8345755059644498720
 GameObject:
   m_ObjectHideFlags: 0
@@ -85,7 +86,7 @@ Transform:
   m_GameObject: {fileID: 8345755059644498720}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.604, z: 0}
+  m_LocalPosition: {x: 0, y: -0.469, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -141,7 +142,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 28ac64e160dd34346a7567b6dae7fdaa, type: 3}
       propertyPath: m_CastShadows
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 28ac64e160dd34346a7567b6dae7fdaa, type: 3}
       propertyPath: m_DynamicOccludee

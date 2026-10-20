@@ -22,6 +22,7 @@ public class SlotManager : MonoBehaviour
     private List<Shooter> shooters;
     private List<Shooter> waitingShooters;
     private bool stopped;
+    private bool stuckWarning;
     private bool wrongWarningBusy;
 
     public bool IsHalted => stopped;
@@ -68,10 +69,7 @@ public class SlotManager : MonoBehaviour
 
     private void Update()
     {
-        if (stopped)
-            return;
-
-        if (waitingShooters != null && waitingShooters.Count > 0)
+        if (!stopped && waitingShooters != null && waitingShooters.Count > 0)
         {
             bool placed = PlaceShooter(waitingShooters[0]);
             if (placed)
@@ -174,7 +172,7 @@ public class SlotManager : MonoBehaviour
         if (slots == null)
             return;
 
-        bool danger = slots.Count > 0 && IsAreaFull;
+        bool danger = stuckWarning || (!stopped && slots.Count > 0 && IsAreaFull);
         if (!danger && !wrongWarningBusy)
             return;
 
@@ -281,6 +279,8 @@ public class SlotManager : MonoBehaviour
 
     public void NotifyShooterAreaStuck()
     {
+        stuckWarning = true;
+        UpdateWrongWarnings();
         OnShooterAreaStuck?.Invoke();
     }
 }

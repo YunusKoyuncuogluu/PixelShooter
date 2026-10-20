@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using PixelShooter.Pooling;
 using UnityEngine;
 using Zenject;
@@ -7,6 +9,7 @@ namespace PixelShooter.Game
 {
     public class LevelFlowController : MonoBehaviour
     {
+        private const int FailUiDelayMilliseconds = 500;
         [Inject] private SlotManager slotManager;
         [Inject] private UIManager uiManager;
         [Inject] private global::Game.PlayerController playerController;
@@ -49,7 +52,7 @@ namespace PixelShooter.Game
             if (gameAudio != null)
                 gameAudio.PlayLevelWin();
 
-            StopGameplay(false);
+            StopGameplay();
 
             if (uiManager != null)
                 uiManager.ShowCompleted();
@@ -73,22 +76,34 @@ namespace PixelShooter.Game
             if (gameAudio != null)
                 gameAudio.PlayLevelFail();
 
-            StopGameplay(true);
+            StopGameplay();
+
+            if (uiManager != null)
+                uiManager.LockGameplay();
+
+            ShowFailAfterDelayAsync(this.GetCancellationTokenOnDestroy()).Forget();
+        }
+
+        private async UniTaskVoid ShowFailAfterDelayAsync(CancellationToken cancellationToken)
+        {
+            await UniTask.Delay(FailUiDelayMilliseconds, ignoreTimeScale: true, cancellationToken: cancellationToken);
 
             if (uiManager != null)
                 uiManager.ShowFail();
         }
 
-        private void StopGameplay(bool freezeTime)
+        private void LockInput()
         {
             if (playerController != null)
                 playerController.SetActive(false);
+        }
+
+        private void StopGameplay()
+        {
+            LockInput();
 
             if (slotManager != null)
                 slotManager.Stop();
-
-            if (freezeTime)
-                Time.timeScale = 0f;
 
             GameplayStopped?.Invoke();
         }

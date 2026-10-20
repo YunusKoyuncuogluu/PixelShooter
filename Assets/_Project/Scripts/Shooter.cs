@@ -8,7 +8,6 @@ using Zenject;
 public class Shooter : MonoBehaviour
 {
     private readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-    private readonly int HighlightColorId = Shader.PropertyToID("_HColor");
     private readonly int OutlineWidthId = Shader.PropertyToID("_OutlineWidth");
 
     [Inject] private ProjectSettings projectSettings;
@@ -29,11 +28,25 @@ public class Shooter : MonoBehaviour
 
     [SerializeField] private float slotTravelSpeed = 25f;
     [SerializeField] private float plateTravelSpeed = 20f;
+    [SerializeField] private float plateDistanceMultiplier = 0.08f;
+    [SerializeField] private float plateArcHeightMin = 7f;
+    [SerializeField] private float plateArcHeightMax = 15f;
     [SerializeField] private float conveyorSpeed = 5f;
+    [SerializeField] private float fireRecoilDistance = 0.2f;
+    [SerializeField] private float fireRecoilDuration = 0.16f;
 
     public float SlotTravelSpeed => slotTravelSpeed > 0.01f ? slotTravelSpeed : 0.01f;
     public float PlateTravelSpeed => plateTravelSpeed > 0.01f ? plateTravelSpeed : 0.01f;
+    public float PlateDistanceMultiplier => plateDistanceMultiplier > 0f ? plateDistanceMultiplier : 0f;
     public float ConveyorSpeed => conveyorSpeed > 0.01f ? conveyorSpeed : 0.01f;
+
+    public float RandomPlateArcHeight()
+    {
+        float min = Mathf.Max(0f, plateArcHeightMin);
+        float max = Mathf.Max(min, plateArcHeightMax);
+
+        return Random.Range(min, max);
+    }
 
     private bool isClickable;
     public bool IsClickable => isClickable;
@@ -63,7 +76,7 @@ public class Shooter : MonoBehaviour
     private Color shooterColor;
     private ShooterController shooterController;
 
-    private Sequence scaleSequence;
+    private Sequence placementBounceSequence;
     private bool isBusy;
     public bool IsBusy => isBusy;
 
@@ -88,12 +101,21 @@ public class Shooter : MonoBehaviour
     private bool continueWhenSeated;
     private bool presentedLocked;
     private bool unlockHandled;
+    private bool holdPresentationScale;
     private bool homePoseCached;
     private Vector3 homeLocalScale;
     private Vector3 homePosition;
-    private Sequence revealSequence;
+    private int revealTweenId;
+
+    private Transform fireVisual;
+    private Vector3 fireVisualRestPosition;
+    private Vector3 fireVisualRecoilPosition;
+    private bool fireVisualReady;
+    private bool fireRecoilQueued;
+    private Tween fireRecoilTween;
 
     private const float LockedScaleFactor = 0.78f;
+    private const float FireRecoilOvershoot = 1.35f;
     private const float UnlockLift = 0.55f;
     private const float UnlockRiseDuration = 0.34f;
     private const float UnlockSettleDuration = 0.4f;
@@ -178,6 +200,80 @@ public class Shooter : MonoBehaviour
 
     public void SetTunnelShooter(bool tunnelShooter) => isTunnelShooter = tunnelShooter;
 
+    public void PlayFireRecoil()
+    {
+        if (!EnsureFireVisual())
+            return;
+
+        if (fireRecoilTween != null && fireRecoilTween.IsActive())
+        {
+            fireRecoilQueued = true;
+            return;
+        }
+
+        BeginFireRecoil();
+    }
+
+    private void OnDisable()
+    {
+        fireRecoilQueued = false;
+        fireRecoilTween?.Kill();
+        fireRecoilTween = null;
+
+        if (fireVisualReady && fireVisual != null)
+            fireVisual.localPosition = fireVisualRestPosition;
+    }
+
+    private bool EnsureFireVisual()
+    {
+        if (fireVisualReady)
+            return fireVisual != null;
+
+        fireVisualReady = true;
+
+        if (extraRenderer == null)
+            return false;
+
+        fireVisual = extraRenderer.transform;
+        fireVisualRestPosition = fireVisual.localPosition;
+        fireVisualRecoilPosition = fireVisualRestPosition;
+        fireVisualRecoilPosition.z -= fireRecoilDistance > 0f ? fireRecoilDistance : 0f;
+        return true;
+    }
+
+    private void BeginFireRecoil()
+    {
+        fireRecoilQueued = false;
+        fireRecoilTween?.Kill();
+
+        float duration = fireRecoilDuration > 0.02f ? fireRecoilDuration : 0.02f;
+        fireVisual.localPosition = fireVisualRecoilPosition;
+
+        fireRecoilTween = fireVisual
+            .DOLocalMove(fireVisualRestPosition, duration)
+            .SetEase(Ease.OutBack, FireRecoilOvershoot)
+            .SetRecyclable(true)
+            .OnComplete(HandleFireRecoilComplete);
+    }
+
+    private void HandleFireRecoilComplete()
+    {
+        fireRecoilTween = null;
+        fireVisual.localPosition = fireVisualRestPosition;
+
+        if (!fireRecoilQueued || !isActiveAndEnabled)
+        {
+            fireRecoilQueued = false;
+            return;
+        }
+
+        BeginFireRecoil();
+    }
+
+    public void SetHoldPresentationScale(bool hold) => holdPresentationScale = hold;
+
+    public Vector3 LockedLocalScale => (homePoseCached ? homeLocalScale : cachedTransform.localScale) * LockedScaleFactor;
+
     public void SetCoordinate(Vector2Int value) => coordinate = value;
 
     public void SetOutline(bool open)
@@ -197,15 +293,13 @@ public class Shooter : MonoBehaviour
         {
             if (unlockHandled)
                 Relock();
-            else if (!presentedLocked)
+            else
                 ApplyLockedLook();
             return;
         }
 
-        if (unlockHandled)
-        {
+        if (holdPresentationScale || unlockHandled)
             return;
-        }
 
         unlockHandled = true;
         if (presentedLocked)
@@ -245,7 +339,7 @@ public class Shooter : MonoBehaviour
         keepOutlineOpen = true;
         SetClickable(false);
         isBusy = true;
-        revealSequence?.Kill();
+        KillRevealTweens();
 
         if (homePoseCached && cachedTransform != null)
             cachedTransform.localScale = homeLocalScale;
@@ -370,19 +464,20 @@ public class Shooter : MonoBehaviour
 
     private void PlayPlacementBounce()
     {
-        scaleSequence?.Kill();
+        placementBounceSequence?.Kill();
 
         Vector3 shooterScale = cachedTransform.localScale;
         Transform slotTransform = mySlot.transform;
         Vector3 slotScale = slotTransform.localScale;
 
-        scaleSequence = DOTween.Sequence();
-        scaleSequence.Append(cachedTransform.DOScale(shooterScale * 0.95f, 0.05f).SetEase(Ease.Linear));
-        scaleSequence.Append(slotTransform.DOScale(slotScale * 0.95f, 0.05f).SetEase(Ease.Linear));
-        scaleSequence.Append(cachedTransform.DOScale(shooterScale, 0.05f).SetEase(Ease.Linear));
-        scaleSequence.Append(slotTransform.DOScale(slotScale, 0.05f).SetEase(Ease.Linear));
-        scaleSequence.OnKill(() => RestorePlacementScales(shooterScale, slotTransform, slotScale));
-        scaleSequence.OnComplete(() =>
+        placementBounceSequence = DOTween.Sequence();
+        placementBounceSequence.SetRecyclable(true);
+        placementBounceSequence.Append(cachedTransform.DOScale(shooterScale * 0.95f, 0.05f).SetEase(Ease.Linear));
+        placementBounceSequence.Append(slotTransform.DOScale(slotScale * 0.95f, 0.05f).SetEase(Ease.Linear));
+        placementBounceSequence.Append(cachedTransform.DOScale(shooterScale, 0.05f).SetEase(Ease.Linear));
+        placementBounceSequence.Append(slotTransform.DOScale(slotScale, 0.05f).SetEase(Ease.Linear));
+        placementBounceSequence.OnKill(() => RestorePlacementScales(shooterScale, slotTransform, slotScale));
+        placementBounceSequence.OnComplete(() =>
         {
             RestorePlacementScales(shooterScale, slotTransform, slotScale);
             tunnelManager.ControlTunnel();
@@ -425,8 +520,22 @@ public class Shooter : MonoBehaviour
 
     private void OnDestroy()
     {
-        revealSequence?.Kill();
-        scaleSequence?.Kill();
+        KillRevealTweens();
+        placementBounceSequence?.Kill();
+    }
+
+    private void KillRevealTweens()
+    {
+        if (revealTweenId != 0)
+            DOTween.Kill(revealTweenId, false);
+    }
+
+    private int GetRevealTweenId()
+    {
+        if (revealTweenId == 0)
+            revealTweenId = GetInstanceID();
+
+        return revealTweenId;
     }
 
     private void CacheHomePose()
@@ -442,8 +551,7 @@ public class Shooter : MonoBehaviour
     private void Relock()
     {
         unlockHandled = false;
-        revealSequence?.Kill();
-        revealSequence = null;
+        KillRevealTweens();
         ApplyLockedLook();
 
         if (cachedTransform != null && homePoseCached)
@@ -460,7 +568,7 @@ public class Shooter : MonoBehaviour
         if (controller != null)
             controller.ShowAmmoCount(false);
 
-        if (cachedTransform == null || !homePoseCached)
+        if (holdPresentationScale || cachedTransform == null || !homePoseCached)
             return;
 
         cachedTransform.localScale = homeLocalScale * LockedScaleFactor;
@@ -494,28 +602,55 @@ public class Shooter : MonoBehaviour
             return;
         }
 
-        revealSequence?.Kill();
+        int tweenId = GetRevealTweenId();
+        DOTween.Kill(tweenId, false);
         cachedTransform.position = homePosition;
         cachedTransform.localScale = homeLocalScale * LockedScaleFactor;
 
         Vector3 lifted = homePosition + Vector3.up * UnlockLift;
         Vector3 peakScale = homeLocalScale * 1.2f;
 
-        revealSequence = DOTween.Sequence();
-        revealSequence.SetTarget(cachedTransform);
-        revealSequence.SetRecyclable(true);
-        revealSequence.Append(cachedTransform.DOMove(lifted, UnlockRiseDuration).SetEase(Ease.OutCubic));
-        revealSequence.Join(cachedTransform.DOScale(peakScale, UnlockRiseDuration).SetEase(Ease.OutCubic));
-        revealSequence.AppendInterval(0.08f);
-        revealSequence.Append(cachedTransform.DOMove(homePosition, UnlockSettleDuration).SetEase(Ease.InOutSine));
-        revealSequence.Join(cachedTransform.DOScale(homeLocalScale, UnlockSettleDuration).SetEase(Ease.InOutSine));
-        revealSequence.OnComplete(() =>
-        {
-            if (!isClickable)
-                return;
+        cachedTransform
+            .DOMove(lifted, UnlockRiseDuration)
+            .SetEase(Ease.Linear)
+            .SetId(tweenId)
+            .SetRecyclable(true)
+            .OnComplete(PlayUnlockSettle);
 
-            RestoreHomePose();
-        });
+        cachedTransform
+            .DOScale(peakScale, UnlockRiseDuration)
+            .SetEase(Ease.Linear)
+            .SetId(tweenId)
+            .SetRecyclable(true);
+    }
+
+    private void PlayUnlockSettle()
+    {
+        if (cachedTransform == null || !homePoseCached)
+            return;
+
+        int tweenId = GetRevealTweenId();
+
+        cachedTransform
+            .DOMove(homePosition, UnlockSettleDuration)
+            .SetEase(Ease.Linear)
+            .SetId(tweenId)
+            .SetRecyclable(true)
+            .OnComplete(HandleUnlockComplete);
+
+        cachedTransform
+            .DOScale(homeLocalScale, UnlockSettleDuration)
+            .SetEase(Ease.Linear)
+            .SetId(tweenId)
+            .SetRecyclable(true);
+    }
+
+    private void HandleUnlockComplete()
+    {
+        if (!isClickable)
+            return;
+
+        RestoreHomePose();
     }
 
     private void RestoreHomePose()
@@ -555,7 +690,6 @@ public class Shooter : MonoBehaviour
         if (!isQuestionShooter)
         {
             propertyBlock.SetColor(BaseColorId, shooterColor);
-            //propertyBlock.SetColor(HighlightColorId, UnityEngine.Color.white);
         }
 
         propertyBlock.SetFloat(OutlineWidthId, width);

@@ -122,14 +122,31 @@ public class Tunnel : MonoBehaviour
         shooter.SetTunnelShooter(false);
         shooter.SetCoordinate(exitCoordinate);
 
+        shooter.SetHoldPresentationScale(true);
+        shooterManager.ControlClickableShooters();
+        Vector3 endScale = shooter.IsClickable ? Vector3.one : shooter.LockedLocalScale;
+        bool presentationSettled = false;
+
         shooter.transform.gameObject.FollowTo(
             objectPool,
             targetPosition,
             shooter.SlotTravelSpeed,
-            onComplete: () => { shooterManager.ControlClickableShooters(); },
+            onComplete: () =>
+            {
+                presentationSettled = true;
+                shooter.SetHoldPresentationScale(false);
+
+                if (shooter != null)
+                    shooter.transform.localScale = endScale;
+
+                shooterManager.ControlClickableShooters();
+            },
             onUpdate: progress =>
             {
-                shooter.transform.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, progress);
+                if (presentationSettled || shooter == null)
+                    return;
+
+                shooter.transform.localScale = Vector3.Lerp(Vector3.zero, endScale, progress);
             });
     }
 

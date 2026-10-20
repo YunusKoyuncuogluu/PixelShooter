@@ -1,11 +1,12 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Dreamteck.Splines;
 using PixelShooter.Pooling;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Zenject;
-using Random = UnityEngine.Random;
 
 public class Plate : MonoBehaviour
 {
@@ -20,17 +21,20 @@ public class Plate : MonoBehaviour
     [SerializeField] private float slideDuration = 0.22f;
 
     [Header("Boarding Pose")]
-    [SerializeField] private Vector3 flatEuler = Vector3.zero;
-    [SerializeField] private Vector3 passengerLocalEuler = new Vector3(90f, 0f, 0f);
+    [SerializeField] private Vector3 boardingEuler = new Vector3(0f, 90f, 180f);
     [SerializeField] private float boardingYOffset = 0f;
 
-    [Header("Deploy Motion")]
-    [SerializeField] private float deployTravelSpeed = 18f;
-    [SerializeField] private float deployArcHeight = 2f;
+    [Header("Boarding Motion")]
+    [SerializeField] private float boardingDuration = 0.45f;
+    [SerializeField] private Ease boardingMoveEase = Ease.InOutQuad;
+    [SerializeField] private Ease boardingRotateEase = Ease.InOutQuad;
 
-    [Header("Shooter Travel Arc")]
-    [SerializeField] private float travelArcHeightMin = 4.5f;
-    [SerializeField] private float travelArcHeightMax = 7.5f;
+    [Header("Return Spline")]
+    [FormerlySerializedAs("deployTravelSpeed")]
+    [SerializeField] private float returnTravelSpeed = 18f;
+    [FormerlySerializedAs("deployArcHeight")]
+    [SerializeField] private float returnArcHeight = 2f;
+    [SerializeField] private float returnDistanceMultiplier = 0.12f;
 
     private Transform cachedTransform;
     private Transform homeRoot;
@@ -38,6 +42,7 @@ public class Plate : MonoBehaviour
     [Inject] private ObjectPool objectPool;
     private Tween activeTween;
     private SplineFollower cachedFollower;
+    private CancellationTokenSource moveCts;
 
     public Transform SeatPoint => seatPoint != null ? seatPoint : cachedTransform;
 
@@ -47,22 +52,18 @@ public class Plate : MonoBehaviour
     public bool QueueOppositeToTravel => queueOppositeToTravel;
     public Vector3 VerticalEuler => verticalEuler;
     public float SlideDuration => Mathf.Max(0.01f, slideDuration);
-    public Vector3 FlatEuler => flatEuler;
-    public Vector3 PassengerLocalEuler => passengerLocalEuler;
+    public Vector3 BoardingEuler => boardingEuler;
     public float BoardingYOffset => boardingYOffset;
-    public float DeployTravelSpeed => Mathf.Max(0.01f, deployTravelSpeed);
-    public float DeployArcHeight => Mathf.Max(0f, deployArcHeight);
+    public float BoardingDuration => Mathf.Max(0.01f, boardingDuration);
+    public Ease BoardingMoveEase => boardingMoveEase;
+    public Ease BoardingRotateEase => boardingRotateEase;
+    public float ReturnTravelSpeed => Mathf.Max(0.01f, returnTravelSpeed);
+    public float ReturnArcHeight => Mathf.Max(0f, returnArcHeight);
+    public float ReturnDistanceMultiplier => Mathf.Max(0f, returnDistanceMultiplier);
 
     private void Awake()
     {
         cachedTransform = transform;
-    }
-    public float RandomTravelArcHeight()
-    {
-        float min = Mathf.Max(0f, travelArcHeightMin);
-        float max = Mathf.Max(min, travelArcHeightMax);
-
-        return Random.Range(min, max);
     }
 
     public Vector3 PredictSeatWorldPosition(Vector3 flatWorldPosition, Quaternion flatWorldRotation)
@@ -84,88 +85,121 @@ public class Plate : MonoBehaviour
         FlyToQueueAsync(worldPosition, worldRotation).Forget();
     }
 
-    private async UniTask FlyToQueueAsync(Vector3 worldPosition, Quaternion worldRotation)
+    private async UniTaskVoid FlyToQueueAsync(Vector3 worldPosition, Quaternion worldRotation)
     {
         if (cachedTransform == null)
             cachedTransform = transform;
 
-        KillTween();
-        DetachFollower();
         AttachHome();
         gameObject.SetActive(true);
-        await FlyArcAsync(worldPosition, worldRotation, this.GetCancellationTokenOnDestroy());
-    }
 
-    public void PlaceInQueue(Vector3 worldPosition, Quaternion worldRotation)
-    {
-        KillTween();
-        DetachFollower();
-        AttachHome();
-        cachedTransform.position = worldPosition;
-        cachedTransform.rotation = worldRotation;
-        gameObject.SetActive(true);
-    }
-
-    public async UniTask DeployFlatAsync(
-        Vector3 flatWorldPosition,
-        Quaternion flatWorldRotation,
-        CancellationToken cancellationToken)
-    {
-        KillTween();
-        DetachFollower();
-
-        await FlyArcAsync(flatWorldPosition, flatWorldRotation, cancellationToken);
-    }
-
-    private async UniTask FlyArcAsync(
-        Vector3 worldPosition,
-        Quaternion worldRotation,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken token = RestartMove(this.GetCancellationTokenOnDestroy());
         Quaternion startRotation = cachedTransform.rotation;
-        await gameObject.FollowToAsync(
-            objectPool,
-            worldPosition,
-            DeployTravelSpeed,
-            DeployArcHeight,
-            progress =>
-            {
-                if (cachedTransform != null)
-                    cachedTransform.rotation = Quaternion.Slerp(startRotation, worldRotation, progress);
-            },
-            cancellationToken);
 
-        if (cachedTransform == null)
+        try
+        {
+            await gameObject.FollowToAsync(
+                objectPool,
+                worldPosition,
+                ReturnTravelSpeed,
+                ReturnArcHeight,
+                progress =>
+                {
+                    if (cachedTransform != null)
+                        cachedTransform.rotation = Quaternion.Slerp(startRotation, worldRotation, progress);
+                },
+                token,
+                ReturnDistanceMultiplier);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested || cachedTransform == null)
             return;
 
         cachedTransform.SetPositionAndRotation(worldPosition, worldRotation);
     }
 
-    public async UniTask SlideToQueueAsync(
+    public void PlaceInQueue(Vector3 worldPosition, Quaternion worldRotation)
+    {
+        StopMove();
+        AttachHome();
+        cachedTransform.position = worldPosition;
+        cachedTransform.rotation = worldRotation;
+        gameObject.SetActive(true);
+    }
+
+    public UniTask DeployFlatAsync(
+        Vector3 flatWorldPosition,
+        Quaternion flatWorldRotation,
+        CancellationToken cancellationToken)
+    {
+        return TweenToAsync(
+            flatWorldPosition,
+            flatWorldRotation,
+            BoardingDuration,
+            BoardingMoveEase,
+            BoardingRotateEase,
+            cancellationToken);
+    }
+
+    public UniTask SlideToQueueAsync(
         Vector3 worldPosition,
         Quaternion worldRotation,
         CancellationToken cancellationToken)
     {
-        KillTween();
-        float duration = SlideDuration;
+        return TweenToAsync(
+            worldPosition,
+            worldRotation,
+            SlideDuration,
+            Ease.OutQuad,
+            Ease.OutQuad,
+            cancellationToken);
+    }
 
-        Sequence sequence = DOTween.Sequence();
-        sequence.Append(cachedTransform.DOMove(worldPosition, duration).SetEase(Ease.OutQuad));
-        sequence.Join(cachedTransform.DORotateQuaternion(worldRotation, duration).SetEase(Ease.OutQuad));
-        activeTween = sequence;
+    private async UniTask TweenToAsync(
+        Vector3 worldPosition,
+        Quaternion worldRotation,
+        float duration,
+        Ease moveEase,
+        Ease rotateEase,
+        CancellationToken cancellationToken)
+    {
+        if (cachedTransform == null)
+            cachedTransform = transform;
+
+        CancellationToken token = RestartMove(cancellationToken);
+
+        Tween moveTween = cachedTransform
+            .DOMove(worldPosition, duration)
+            .SetEase(moveEase)
+            .SetRecyclable(true);
+        cachedTransform
+            .DORotateQuaternion(worldRotation, duration)
+            .SetEase(rotateEase)
+            .SetRecyclable(true);
+        activeTween = moveTween;
 
         try
         {
-            await sequence.AsyncWaitForCompletion().AsUniTask().AttachExternalCancellation(cancellationToken);
+            await moveTween.AsyncWaitForCompletion().AsUniTask().AttachExternalCancellation(token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         finally
         {
-            if (activeTween == sequence)
+            if (activeTween == moveTween)
                 activeTween = null;
         }
 
-        cachedTransform.position = worldPosition;
-        cachedTransform.rotation = worldRotation;
+        if (token.IsCancellationRequested || cachedTransform == null)
+            return;
+
+        cachedTransform.SetPositionAndRotation(worldPosition, worldRotation);
     }
 
     public void SeatPassenger(Transform passenger)
@@ -210,8 +244,7 @@ public class Plate : MonoBehaviour
 
     public void HideAtHome()
     {
-        KillTween();
-        DetachFollower();
+        StopMove();
         AttachHome();
         gameObject.SetActive(false);
     }
@@ -227,17 +260,53 @@ public class Plate : MonoBehaviour
         cachedTransform.SetParent(homeRoot, true);
     }
 
+    private CancellationToken RestartMove(CancellationToken externalToken)
+    {
+        StopMove();
+
+        moveCts = externalToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(externalToken)
+            : new CancellationTokenSource();
+
+        return moveCts.Token;
+    }
+
+    private void StopMove()
+    {
+        KillTween();
+
+        if (objectPool != null)
+            SplineExtensions.ClearExistingFollowers(gameObject, objectPool);
+        else
+            DetachFollower();
+
+        cachedFollower = null;
+
+        if (moveCts != null)
+        {
+            moveCts.Cancel();
+            moveCts.Dispose();
+            moveCts = null;
+        }
+    }
+
     private void KillTween()
     {
-        if (activeTween == null)
-            return;
+        if (cachedTransform != null)
+            DOTween.Kill(cachedTransform, false);
 
-        activeTween.Kill();
         activeTween = null;
     }
 
     private void OnDestroy()
     {
+        if (moveCts != null)
+        {
+            moveCts.Cancel();
+            moveCts.Dispose();
+            moveCts = null;
+        }
+
         KillTween();
     }
 

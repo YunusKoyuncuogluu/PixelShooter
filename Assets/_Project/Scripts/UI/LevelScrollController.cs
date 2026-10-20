@@ -123,8 +123,9 @@ namespace PixelShooter.UI
             introTween = panelRect
                 .DOAnchorPos(introEndPosition, introDuration)
                 .SetEase(Ease.InOutBounce)
-                .OnComplete(FinishIntro)
-                .SetLink(gameObject);
+                .SetRecyclable(true)
+                .SetLink(gameObject)
+                .OnComplete(FinishIntro);
         }
 
         private void FinishIntro()

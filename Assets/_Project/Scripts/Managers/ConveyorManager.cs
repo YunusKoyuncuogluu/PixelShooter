@@ -107,20 +107,99 @@ public class ConveyorManager : MonoBehaviour
         if (isStopped || shooterController == null)
             return;
 
-        DetachPlateFollower(shooterController);
         activeShooters.Remove(shooterController);
-
-        if (plateQueueManager != null)
-            plateQueueManager.ReleaseBoundPlate(shooterController, true);
 
         if (outOfAmmo)
         {
+            ReleasePlateKeepMoving(shooterController);
             shooterController.DestroyEmpty();
             TryTriggerWin();
             return;
         }
 
+        DetachPlateFollower(shooterController);
+
+        if (plateQueueManager != null)
+            plateQueueManager.ReleaseBoundPlate(shooterController, true);
+
         ReturnShooterToSlotArea(shooterController);
+    }
+
+    private void ReleasePlateKeepMoving(ShooterController shooterController)
+    {
+        SplineFollower plateFollower = shooterController.CachedFollower;
+        float speed = ResolveFollowSpeed(plateFollower, shooterController);
+
+        if (plateFollower != null)
+        {
+            plateFollower.follow = false;
+            plateFollower.onEndReached -= shooterController.OnLapReached;
+        }
+
+        Vector3 worldPosition = shooterController.transform.position;
+        Quaternion worldRotation = shooterController.transform.rotation;
+
+        Plate plate = plateQueueManager != null ? plateQueueManager.GetBoundPlate(shooterController) : null;
+        if (plate != null)
+        {
+            plate.ClearPassenger(shooterController.transform);
+            plate.DetachFollower();
+        }
+
+        shooterController.DetachFromPlate(worldPosition, worldRotation);
+
+        if (conveyorSpline != null)
+        {
+            SplineSample sample = conveyorSpline.Project(worldPosition);
+            Vector3 delta = worldPosition - sample.position;
+            Vector2 offset = new Vector2(
+                Vector3.Dot(delta, sample.right),
+                Vector3.Dot(delta, sample.up));
+
+            BindShooterFollower(shooterController, sample.percent, offset, speed, false);
+            shooterController.transform.SetPositionAndRotation(worldPosition, worldRotation);
+        }
+        else
+        {
+            shooterController.ClearTravelFollower();
+        }
+
+        if (plateQueueManager != null)
+            plateQueueManager.ReleaseBoundPlate(shooterController, true);
+    }
+
+    private float ResolveFollowSpeed(SplineFollower sourceFollower, ShooterController shooterController)
+    {
+        if (sourceFollower != null && sourceFollower.followSpeed > 0.01f)
+            return sourceFollower.followSpeed;
+
+        Shooter shooter = shooterController != null ? shooterController.Owner : null;
+        return shooter != null ? shooter.ConveyorSpeed : 1f;
+    }
+
+    private void BindShooterFollower(
+        ShooterController shooterController,
+        double percent,
+        Vector2 offset,
+        float speed,
+        bool applyRotation)
+    {
+        SplineExtensions.ClearExistingFollowers(shooterController.gameObject, objectPool);
+
+        SplineFollower follower = shooterController.GetTravelFollower();
+        follower.follow = false;
+        follower.spline = conveyorSpline;
+        follower.RebuildImmediate();
+        follower.updateMethod = SplineUser.UpdateMethod.Update;
+        follower.followMode = SplineFollower.FollowMode.Uniform;
+        follower.followSpeed = speed > 0.01f ? speed : 1f;
+        follower.wrapMode = SplineFollower.Wrap.Loop;
+        follower.motion.applyPosition = true;
+        follower.motion.applyRotation = applyRotation;
+        follower.motion.offset = offset;
+        follower.SetPercent(percent);
+        shooterController.SetTravelFollower(follower);
+        follower.follow = true;
     }
 
     private void ReturnShooterToSlotArea(ShooterController shooterController)
@@ -214,6 +293,7 @@ public class ConveyorManager : MonoBehaviour
         SplineFollower follower = plate.GetTravelFollower();
         follower.follow = false;
         follower.spline = conveyorSpline;
+        follower.RebuildImmediate();
         follower.updateMethod = SplineUser.UpdateMethod.Update;
         follower.followMode = SplineFollower.FollowMode.Uniform;
         follower.followSpeed = speed;
@@ -221,13 +301,9 @@ public class ConveyorManager : MonoBehaviour
         follower.motion.applyPosition = true;
         follower.motion.applyRotation = true;
 
-        Vector3 flatEuler = plate.FlatEuler;
-        follower.motion.rotationOffset = flatEuler;
-
         SplineSample startSample = conveyorSpline.Evaluate(0.0);
         Vector3 followPosition = startSample.position;
-        Quaternion followRotation = Quaternion.LookRotation(Flatten(startSample.forward), Vector3.up)
-            * Quaternion.Euler(flatEuler);
+        Quaternion followRotation = Quaternion.LookRotation(startSample.forward, startSample.up);
         Vector2 followOffset = Vector2.zero;
 
         if (plateQueueManager != null)
@@ -243,6 +319,9 @@ public class ConveyorManager : MonoBehaviour
             followRotation = boardRot;
         }
 
+        Quaternion splineBasis = Quaternion.LookRotation(startSample.forward, startSample.up);
+        Quaternion rotationOffset = Quaternion.Inverse(splineBasis) * followRotation;
+        follower.motion.rotationOffset = rotationOffset.eulerAngles;
         follower.motion.offset = followOffset;
         follower.SetPercent(0.0);
         plate.transform.SetPositionAndRotation(followPosition, followRotation);
@@ -251,30 +330,11 @@ public class ConveyorManager : MonoBehaviour
         follower.follow = true;
     }
 
-    private Vector3 Flatten(Vector3 value)
-    {
-        value.y = 0f;
-        return value.sqrMagnitude > 0.0001f ? value.normalized : Vector3.forward;
-    }
-
     private void AttachShooterFollowerFallback(ShooterController shooterController)
     {
         Shooter shooter = shooterController.Owner;
         float speed = shooter != null ? shooter.ConveyorSpeed : 1f;
-
-        SplineFollower follower = shooterController.GetTravelFollower();
-
-        follower.follow = false;
-        follower.spline = conveyorSpline;
-        follower.updateMethod = SplineUser.UpdateMethod.Update;
-        follower.followMode = SplineFollower.FollowMode.Uniform;
-        follower.followSpeed = speed;
-        follower.wrapMode = SplineFollower.Wrap.Loop;
-        follower.motion.applyPosition = true;
-        follower.motion.applyRotation = false;
-        follower.SetPercent(0.0);
-        shooterController.SetTravelFollower(follower);
-        follower.follow = true;
+        BindShooterFollower(shooterController, 0.0, Vector2.zero, speed, false);
     }
 
     private void DetachPlateFollower(ShooterController shooterController)

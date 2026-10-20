@@ -43,14 +43,18 @@ namespace PixelShooter.UI
             if (backgroundImage != null)
             {
                 backgroundImage.color = new Color(0f, 0f, 0f, 0f);
-                backgroundImage.DOFade(0.78f, 0.2f).SetUpdate(true);
+                backgroundImage.DOFade(0.78f, 0.2f).SetUpdate(true).SetRecyclable(true);
             }
 
             if (popupTransform == null)
                 return;
 
-            popupTransform.DOScale(Vector3.one * 1.1f, 0.2f).SetEase(Ease.OutFlash).SetUpdate(true)
-                .OnComplete(() => { popupTransform.DOScale(Vector3.one, 0.1f).SetUpdate(true); });
+            popupTransform
+                .DOScale(Vector3.one * 1.1f, 0.2f)
+                .SetEase(Ease.OutFlash)
+                .SetUpdate(true)
+                .SetRecyclable(true)
+                .OnComplete(PlayPopupSettle);
         }
 
         public virtual void OnTapClose()
@@ -58,10 +62,21 @@ namespace PixelShooter.UI
             Close();
         }
 
+        private void PlayPopupSettle()
+        {
+            if (popupTransform == null)
+                return;
+
+            popupTransform
+                .DOScale(Vector3.one, 0.1f)
+                .SetUpdate(true)
+                .SetRecyclable(true);
+        }
+
         protected virtual void Close()
         {
             if (backgroundImage != null)
-                backgroundImage.DOFade(0f, 0.2f).SetUpdate(true);
+                backgroundImage.DOFade(0f, 0.2f).SetUpdate(true).SetRecyclable(true);
 
             if (popupTransform == null)
             {
@@ -69,7 +84,12 @@ namespace PixelShooter.UI
                 return;
             }
 
-            popupTransform.DOScale(Vector3.zero, 0.2f).SetEase(Ease.InFlash).SetUpdate(true).OnComplete(FinishClose);
+            popupTransform
+                .DOScale(Vector3.zero, 0.2f)
+                .SetEase(Ease.InFlash)
+                .SetUpdate(true)
+                .SetRecyclable(true)
+                .OnComplete(FinishClose);
         }
 
         private void FinishClose()

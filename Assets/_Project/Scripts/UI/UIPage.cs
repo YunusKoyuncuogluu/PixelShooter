@@ -32,7 +32,9 @@ namespace PixelShooter.UI
                 return;
 
             Vector2 referenceSize = canvasScaler.referenceResolution;
-            pageRect.DOLocalMoveX(-referenceSize.x, 0f).SetUpdate(true);
+            Vector3 pagePosition = pageRect.localPosition;
+            pagePosition.x = -referenceSize.x;
+            pageRect.localPosition = pagePosition;
 
             float aspect = (float)Screen.height / Screen.width;
             if (aspect < 1.6f)
@@ -44,7 +46,11 @@ namespace PixelShooter.UI
             if (pageRect == null)
                 return;
 
-            pageRect.DOLocalMoveX(0f, 0.2f).SetEase(Ease.OutFlash).SetUpdate(true);
+            pageRect
+                .DOLocalMoveX(0f, 0.2f)
+                .SetEase(Ease.OutFlash)
+                .SetUpdate(true)
+                .SetRecyclable(true);
         }
 
         public void OnTapClose() => Close();
@@ -59,11 +65,18 @@ namespace PixelShooter.UI
             }
 
             Vector2 referenceSize = canvasScaler.referenceResolution;
-            pageRect.DOLocalMoveX(-referenceSize.x, 0.2f).SetEase(Ease.OutFlash).SetUpdate(true).OnComplete(() =>
-            {
-                OnClose?.Invoke();
-                Destroy(gameObject);
-            });
+            pageRect
+                .DOLocalMoveX(-referenceSize.x, 0.2f)
+                .SetEase(Ease.OutFlash)
+                .SetUpdate(true)
+                .SetRecyclable(true)
+                .OnComplete(FinishClose);
+        }
+
+        private void FinishClose()
+        {
+            OnClose?.Invoke();
+            Destroy(gameObject);
         }
     }
 }

@@ -42,6 +42,7 @@ public static class SplineExtensions
         float arcHeight,
         Action<float> onUpdate,
         CancellationToken cancellationToken,
+        float distanceMultiplier = 0f,
         Spline.Type splineType = Spline.Type.BSpline)
     {
         if (obj == null)
@@ -62,17 +63,17 @@ public static class SplineExtensions
             speed,
             () => completion.TrySetResult(),
             onUpdate,
-            splineType);
+            splineType,
+            distanceMultiplier);
 
         bool released = false;
+        bool finished = false;
         CancellationTokenRegistration registration = default;
 
         void Release(ObjectPool splinePool, bool destroyImmediate)
         {
             if (released || obj == null)
-            {
                 return;
-            }
 
             released = true;
             ClearExistingFollowers(obj, splinePool, destroyImmediate);
@@ -90,6 +91,7 @@ public static class SplineExtensions
             }
 
             await completion.Task;
+            finished = true;
         }
         catch (OperationCanceledException)
         {
@@ -99,7 +101,12 @@ public static class SplineExtensions
         finally
         {
             registration.Dispose();
-            if (obj != null && !cancellationToken.IsCancellationRequested)
+
+            if (obj != null && (!finished || cancellationToken.IsCancellationRequested))
+            {
+                Release(pool, false);
+            }
+            else if (obj != null)
             {
                 Release(pool, true);
                 obj.transform.position = targetPos;
@@ -115,7 +122,8 @@ public static class SplineExtensions
         float speed,
         Action onComplete,
         Action<float> onUpdate,
-        Spline.Type splineType)
+        Spline.Type splineType,
+        float distanceMultiplier = 0f)
     {
         float resolvedSpeed = Mathf.Max(0.01f, speed);
         ClearExistingFollowers(obj, pool);
@@ -153,6 +161,20 @@ public static class SplineExtensions
         splineComputer.SetPoints(points);
         splineComputer.RebuildImmediate(true, true);
 
+        if (distanceMultiplier > 0f)
+        {
+            float length = splineComputer.CalculateLength();
+            if (length < 0.01f)
+                length = Vector3.Distance(start, end);
+
+            if (length < 0.01f)
+                length = 0.01f;
+
+            resolvedSpeed = resolvedSpeed * length * distanceMultiplier;
+            if (resolvedSpeed < 0.01f)
+                resolvedSpeed = 0.01f;
+        }
+
         SplineFollower follower = obj.AddComponent<SplineFollower>();
 
         follower.follow = false;
@@ -167,6 +189,9 @@ public static class SplineExtensions
         Action<double> endHandler = null;
         endHandler = _ =>
         {
+            if (follower == null)
+                return;
+
             follower.onEndReached -= endHandler;
             follower.follow = false;
 
@@ -180,11 +205,12 @@ public static class SplineExtensions
             else
                 ReleaseSpline(splineObject, pool);
 
-            if (obj != null)
-                obj.transform.position = end;
-
             ClearShooterFollowerCache(obj);
 
+            if (obj == null)
+                return;
+
+            obj.transform.position = end;
             onComplete?.Invoke();
         };
 

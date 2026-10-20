@@ -22,6 +22,12 @@ public class ShooterController : MonoBehaviour
     [SerializeField] private TMP_Text countText;
     [SerializeField] private Transform muzzlePoint;
 
+    [Header("Vanish Animation")]
+    [SerializeField] private float vanishPopScale = 1.35f;
+    [SerializeField] private float vanishPopDuration = 0.28f;
+    [SerializeField] private float vanishShrinkDuration = 0.8f;
+    [SerializeField] private float vanishSpinDegrees = 360f;
+
     private Color shooterColor;
     private short shooterPaletteId = -1;
     private int maxCapacity;
@@ -32,6 +38,7 @@ public class ShooterController : MonoBehaviour
     private bool runCompleted;
     private bool isOnConveyor;
     private bool isAwaitingDeparture;
+    private bool isVanishing;
     private float conveyorEnterTime;
     private SplineFollower cachedFollower;
     private Transform seatAnchor;
@@ -266,7 +273,12 @@ public class ShooterController : MonoBehaviour
         {
             isRunRoutine = false;
             isOnConveyor = false;
-            if (follower != null)
+
+            bool keepMoving = this != null
+                && !cancellationToken.IsCancellationRequested
+                && (MaxCapacity <= 0 || currentFill >= MaxCapacity);
+
+            if (!keepMoving && follower != null)
                 follower.follow = false;
         }
 
@@ -290,7 +302,6 @@ public class ShooterController : MonoBehaviour
             if (runCompleted && inFlightShots <= 0)
                 break;
 
-            // SplineFollower moves the plate in Update. LastPostLateUpdate runs after the frame is presented, so a position copy there leaves the shooter one frame behind (obvious at low FPS).
             await UniTask.Yield(PlayerLoopTiming.LastPreLateUpdate, cancellationToken);
             FaceGridCenter(false);
             TryFire(capacity, cancellationToken);
@@ -409,9 +420,14 @@ public class ShooterController : MonoBehaviour
         if (audioPool != null)
             audioPool.PlayBulletFire();
 
+        Vector3 muzzlePosition = GetMuzzlePosition();
         inFlightShots++;
         RefreshAmmoCount();
-        ShootPixel(projectile, gridPosition, GetMuzzlePosition(), pixelWorldPos, cancellationToken).Forget();
+
+        if (shooter != null)
+            shooter.PlayFireRecoil();
+
+        ShootPixel(projectile, gridPosition, muzzlePosition, pixelWorldPos, cancellationToken).Forget();
     }
 
     private void FaceGridCenter(bool snap)
@@ -528,6 +544,9 @@ public class ShooterController : MonoBehaviour
 
     public void OnLapReached(double unusedPercent)
     {
+        if (isVanishing)
+            return;
+
         if (Time.time - conveyorEnterTime < minLapDuration)
             return;
 
@@ -648,35 +667,94 @@ public class ShooterController : MonoBehaviour
 
     public void LeaveConveyor() => isOnConveyor = false;
 
+    public void DetachFromPlate(Vector3 worldPosition, Quaternion worldRotation)
+    {
+        seatAnchor = null;
+        transform.SetParent(null, true);
+        transform.SetPositionAndRotation(worldPosition, worldRotation);
+    }
+
     public void DestroyEmpty()
     {
-        isOnConveyor = false;
         ShrinkAndDestroy().Forget();
     }
 
     private async UniTaskVoid ShrinkAndDestroy()
     {
         CancellationToken cancellationToken = this.GetCancellationTokenOnDestroy();
-        Vector3 startScale = transform.localScale;
-        const float duration = 0.2f;
-        float elapsed = 0f;
+        Transform body = transform;
+        isVanishing = true;
+        isOnConveyor = true;
 
-        while (elapsed < duration && !cancellationToken.IsCancellationRequested)
+        if (cachedFollower != null)
         {
-            elapsed += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsed / duration);
+            cachedFollower.onEndReached -= OnLapReached;
+            cachedFollower.follow = true;
+        }
 
-            transform.localScale = Vector3.Lerp(startScale, Vector3.zero, progress);
+        float popDuration = vanishPopDuration > 0.01f ? vanishPopDuration : 0.01f;
+        float shrinkDuration = vanishShrinkDuration > 0.01f ? vanishShrinkDuration : 0.01f;
+        float totalDuration = popDuration + shrinkDuration;
+
+        Vector3 startScale = body.localScale;
+        Quaternion spinOrigin = body.localRotation;
+        Vector3 peakScale = startScale * vanishPopScale;
+        float startTime = Time.time;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            float elapsed = Time.time - startTime;
+            if (elapsed >= totalDuration)
+                break;
+
+            ApplyVanishPose(body, elapsed, popDuration, shrinkDuration, startScale, peakScale, spinOrigin);
             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
         }
 
         if (this == null)
             return;
 
+        if (!cancellationToken.IsCancellationRequested)
+            ApplyVanishPose(body, totalDuration, popDuration, shrinkDuration, startScale, peakScale, spinOrigin);
+
+        if (cachedFollower != null)
+        {
+            cachedFollower.follow = false;
+            cachedFollower.spline = null;
+            cachedFollower = null;
+        }
+
+        isOnConveyor = false;
+
         if (slotManager != null && shooter != null)
             slotManager.RemoveShooter(shooter);
 
         Destroy(gameObject);
+    }
+
+    private void ApplyVanishPose(
+        Transform body,
+        float elapsed,
+        float popDuration,
+        float shrinkDuration,
+        Vector3 startScale,
+        Vector3 peakScale,
+        Quaternion spinOrigin)
+    {
+        if (elapsed < popDuration)
+        {
+            float progress = elapsed / popDuration;
+            body.localScale = Vector3.LerpUnclamped(startScale, peakScale, progress);
+            body.localRotation = spinOrigin;
+            return;
+        }
+
+        float linear = (elapsed - popDuration) / shrinkDuration;
+        if (linear > 1f)
+            linear = 1f;
+
+        body.localScale = Vector3.LerpUnclamped(peakScale, Vector3.zero, linear);
+        body.localRotation = spinOrigin * Quaternion.Euler(0f, vanishSpinDegrees * linear, 0f);
     }
 
     private void RefreshAmmoCount()
