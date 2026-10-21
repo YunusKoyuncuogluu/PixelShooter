@@ -20,7 +20,6 @@ public class SlotManager : MonoBehaviour
     private List<Slot> slots;
 
     private List<Shooter> shooters;
-    private List<Shooter> waitingShooters;
     private bool stopped;
     private bool stuckWarning;
     private bool wrongWarningBusy;
@@ -31,7 +30,6 @@ public class SlotManager : MonoBehaviour
 
     public int ShooterCount => shooters != null ? shooters.Count : 0;
     public int OccupantCount => shooters != null ? shooters.Count : 0;
-    public int QueuedCount => waitingShooters != null ? waitingShooters.Count : 0;
 
     public int CountFreeSlots()
     {
@@ -46,20 +44,13 @@ public class SlotManager : MonoBehaviour
                 free++;
         }
 
-        int queued = waitingShooters != null ? waitingShooters.Count : 0;
-        if (queued >= free)
-            return 0;
-
-        return free - queued;
+        return free;
     }
 
     public Shooter GetOccupant(int index) => shooters[index];
 
-    public Shooter GetQueued(int index) => waitingShooters[index];
-
     public void Construct(LevelData levelData)
     {
-        waitingShooters = new List<Shooter>();
         shooters = new List<Shooter>();
         slotData = levelData.SlotData;
         slotCount = slotData.Count;
@@ -69,13 +60,6 @@ public class SlotManager : MonoBehaviour
 
     private void Update()
     {
-        if (!stopped && waitingShooters != null && waitingShooters.Count > 0)
-        {
-            bool placed = PlaceShooter(waitingShooters[0]);
-            if (placed)
-                waitingShooters.RemoveAt(0);
-        }
-
         UpdateWrongWarnings();
     }
 
@@ -227,18 +211,14 @@ public class SlotManager : MonoBehaviour
         return true;
     }
 
-    public void SaveShooter(Shooter shooter)
+    public bool HasOpenSlot()
     {
-        if (shooter == null)
-            return;
+        return GetAvailableSlot() != null;
+    }
 
-        if (waitingShooters.Contains(shooter))
-            return;
-
-        if (shooters != null && shooters.Contains(shooter))
-            return;
-
-        waitingShooters.Add(shooter);
+    public bool TrySeatShooter(Shooter shooter)
+    {
+        return PlaceShooter(shooter);
     }
 
     public void RemoveShooter(Shooter shooter)

@@ -12,6 +12,7 @@ namespace Game
         [SerializeField] private Camera viewCamera;
         [Inject] private CellManager cellManager;
         [Inject] private ShooterManager shooterManager;
+        [Inject] private TunnelManager tunnelManager;
 
         private RaycastHit[] hits;
         private bool isActive;
@@ -39,12 +40,13 @@ namespace Game
                 return;
 
             bool parkedInSlot = currentShooter.IsWaitingInSlot;
-            currentShooter.OnClick();
-            if (parkedInSlot)
+            bool accepted = currentShooter.OnClick();
+            if (parkedInSlot || !accepted)
                 return;
 
             cellManager.SetFull(currentShooter.Coordinate, false);
             shooterManager.ControlClickableShooters();
+            tunnelManager.ControlTunnel();
         }
 
         private Shooter CheckShooter()

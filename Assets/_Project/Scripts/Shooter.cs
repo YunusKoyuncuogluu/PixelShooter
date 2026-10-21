@@ -274,6 +274,25 @@ public class Shooter : MonoBehaviour
 
     public Vector3 LockedLocalScale => (homePoseCached ? homeLocalScale : cachedTransform.localScale) * LockedScaleFactor;
 
+    public Vector3 ExitScale(bool pathOpen)
+    {
+        if (pathOpen)
+            return homePoseCached ? homeLocalScale : Vector3.one;
+
+        return LockedLocalScale;
+    }
+
+    public void PrepareTunnelExit()
+    {
+        SetClickable(false);
+        SetOutline(false);
+        SetHoldPresentationScale(true);
+
+        ShooterController board = GetController();
+        if (board != null)
+            board.ShowAmmoCount(false);
+    }
+
     public void SetCoordinate(Vector2Int value) => coordinate = value;
 
     public void SetOutline(bool open)
@@ -308,34 +327,71 @@ public class Shooter : MonoBehaviour
             ApplyOpenLook();
     }
 
-    public void OnClick()
+    public bool OnClick()
     {
         if (slotManager.IsHalted)
-            return;
+            return false;
 
-        if (IsHeldInSlot)
-        {
-            if (audioPool != null)
-                audioPool.PlayShooterSelect();
+        bool sent = IsHeldInSlot ? TryLeaveSlot() : TryLaunchFromGrid();
+        if (!sent)
+            return false;
 
-            ContinueFromSlot();
-            return;
-        }
-
-        if (isBusy || !isClickable)
-            return;
-
-        if (audioPool != null)
-            audioPool.PlayShooterSelect();
-
-        SendToSlot();
+        PlaySelectSound();
+        return true;
     }
 
-    public void SendToSlot()
+    public bool TryLaunchFromGrid()
     {
-        if (isBusy || !isClickable || isWaitingInSlot || slotManager.IsHalted)
-            return;
+        if (!CanLeaveGrid())
+            return false;
 
+        ShooterController controller = GetController();
+        if (controller == null || !controller.TryHoldPlate())
+            return false;
+
+        if (!slotManager.HasOpenSlot())
+        {
+            controller.ReleaseHeldPlate();
+            return false;
+        }
+
+        MarkDeparting();
+
+        if (!slotManager.TrySeatShooter(this))
+        {
+            CancelDeparting();
+            controller.ReleaseHeldPlate();
+            return false;
+        }
+
+        shooterManager.RemoveShooter(coordinate);
+        return true;
+    }
+
+    public bool TryEnterSlot()
+    {
+        if (!CanLeaveGrid())
+            return false;
+
+        MarkDeparting();
+
+        if (!slotManager.TrySeatShooter(this))
+        {
+            CancelDeparting();
+            return false;
+        }
+
+        shooterManager.RemoveShooter(coordinate);
+        return true;
+    }
+
+    private bool CanLeaveGrid()
+    {
+        return !isBusy && isClickable && !isWaitingInSlot && !slotManager.IsHalted;
+    }
+
+    private void MarkDeparting()
+    {
         keepOutlineOpen = true;
         SetClickable(false);
         isBusy = true;
@@ -343,9 +399,19 @@ public class Shooter : MonoBehaviour
 
         if (homePoseCached && cachedTransform != null)
             cachedTransform.localScale = homeLocalScale;
+    }
 
-        shooterManager.RemoveShooter(coordinate);
-        slotManager.SaveShooter(this);
+    private void CancelDeparting()
+    {
+        isBusy = false;
+        keepOutlineOpen = false;
+        SetClickable(true);
+    }
+
+    private void PlaySelectSound()
+    {
+        if (audioPool != null)
+            audioPool.PlayShooterSelect();
     }
 
     public void ArmAutoContinue() => continueWhenSeated = true;
@@ -369,27 +435,33 @@ public class Shooter : MonoBehaviour
 
     public void ContinueFromSlot()
     {
+        TryLeaveSlot();
+    }
+
+    private bool TryLeaveSlot()
+    {
         if (mySlot == null || slotManager.IsHalted)
-            return;
+            return false;
 
         ShooterController controller = GetController();
-        if (controller == null)
-            return;
+        if (controller == null || !controller.TryHoldPlate())
+            return false;
 
         isWaitingInSlot = false;
         keepOutlineOpen = true;
         SetClickable(false);
         isBusy = true;
 
-        if (controller.StartRun(mySlot, color))
-            return;
+        if (controller.TryDepart(mySlot, color))
+            return true;
 
         if (controller.IsTraveling)
-            return;
+            return false;
 
         isBusy = false;
         isWaitingInSlot = true;
         SetClickable(true);
+        return false;
     }
 
     public void ReturnToSlot(Slot slot)
@@ -481,11 +553,6 @@ public class Shooter : MonoBehaviour
         {
             RestorePlacementScales(shooterScale, slotTransform, slotScale);
             tunnelManager.ControlTunnel();
-
-            ShooterController controller = GetController();
-
-            if (controller != null && controller.StartRun(mySlot, color))
-                return;
 
             isBusy = false;
             isWaitingInSlot = true;

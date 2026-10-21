@@ -49,6 +49,7 @@ public class ShooterController : MonoBehaviour
     private int ammoAtLapStart;
     private CancellationTokenSource travelCts;
     private Shooter shooter;
+    private bool holdsPlate;
 
     public int MaxCapacity => maxCapacity > 0 ? maxCapacity : 0;
     public SplineFollower CachedFollower => cachedFollower;
@@ -98,20 +99,43 @@ public class ShooterController : MonoBehaviour
         return muzzlePoint != null ? muzzlePoint.position : transform.position;
     }
 
-    public bool TryDepart(Slot slot, GeneralColor shooterGeneralColor)
+    public bool TryHoldPlate()
     {
-        if (plateQueueManager == null || !plateQueueManager.HasAvailablePlate)
+        if (holdsPlate || plateQueueManager == null || !plateQueueManager.TryHoldPlate())
             return false;
 
-        return BeginDeparture(slot, shooterGeneralColor);
+        holdsPlate = true;
+        return true;
     }
 
-    public bool StartRun(Slot slot, GeneralColor shooterGeneralColor)
+    public void ReleaseHeldPlate()
     {
-        return BeginDeparture(slot, shooterGeneralColor);
+        if (!holdsPlate || plateQueueManager == null)
+        {
+            holdsPlate = false;
+            return;
+        }
+
+        holdsPlate = false;
+        plateQueueManager.ReleaseHeldPlate();
     }
 
-    private bool BeginDeparture(Slot slot, GeneralColor shooterGeneralColor)
+    public bool TryDepart(Slot slot, GeneralColor shooterGeneralColor)
+    {
+        if (plateQueueManager == null)
+            return false;
+
+        if (!holdsPlate && !plateQueueManager.HasIdlePlate)
+            return false;
+
+        if (BeginBeltRun(slot, shooterGeneralColor))
+            return true;
+
+        ReleaseHeldPlate();
+        return false;
+    }
+
+    private bool BeginBeltRun(Slot slot, GeneralColor shooterGeneralColor)
     {
         if (!CanDepart() || !ApplyShooterColor(shooterGeneralColor))
             return false;
@@ -161,27 +185,9 @@ public class ShooterController : MonoBehaviour
         {
             if (plateQueueManager != null)
             {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    if (IsConveyorStopped())
-                        return;
-
-                    if (!plateQueueManager.HasAvailablePlate)
-                    {
-                        await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
-                        continue;
-                    }
-
-                    if (this == null || IsConveyorStopped())
-                        return;
-
-                    bool boarded = await plateQueueManager.TryBoardShooterAsync(this, cancellationToken);
-
-                    if (boarded)
-                        break;
-
-                    await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
-                }
+                bool seated = await BoardPlateAsync(cancellationToken);
+                if (!seated)
+                    return;
             }
 
             if (this == null || conveyorManager == null || conveyorManager.IsStopped || cancellationToken.IsCancellationRequested)
@@ -196,9 +202,25 @@ public class ShooterController : MonoBehaviour
         {
             isAwaitingDeparture = false;
 
+            if (holdsPlate)
+                ReleaseHeldPlate();
+
             if (!sent && shooter != null)
                 shooter.RestoreSlotWait();
         }
+    }
+
+    private async UniTask<bool> BoardPlateAsync(CancellationToken cancellationToken)
+    {
+        PlateQueueManager.PlateBoardResult result = await plateQueueManager.TryBoardShooterAsync(
+            this,
+            cancellationToken,
+            holdsPlate);
+
+        if (result.HoldSpent)
+            holdsPlate = false;
+
+        return result.IsSeated;
     }
 
     public SplineFollower GetTravelFollower()
@@ -581,14 +603,6 @@ public class ShooterController : MonoBehaviour
         for (int i = 0; i < occupants; i++)
         {
             if (NeedsOtherColor(slotManager.GetOccupant(i)))
-                return true;
-        }
-
-        int queued = slotManager.QueuedCount;
-
-        for (int i = 0; i < queued; i++)
-        {
-            if (NeedsOtherColor(slotManager.GetQueued(i)))
                 return true;
         }
 

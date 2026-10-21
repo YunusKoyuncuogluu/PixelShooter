@@ -160,6 +160,16 @@ public class ShooterManager : MonoBehaviour
         return shooter;
     }
 
+    public bool HasOpenExit(Vector2Int coordinate)
+    {
+        if (coordinate.x < 0 || coordinate.y < 0 || coordinate.x >= width || coordinate.y >= height)
+            return false;
+
+        pathFinding = new PathFinding(width, height, cellManager.Cells);
+        pathFinding.BreadthFirstSearch(coordinate, out bool exitFound);
+        return exitFound;
+    }
+
     public void ControlClickableShooters()
     {
         pathFinding = new PathFinding(width, height, cellManager.Cells);
@@ -208,6 +218,31 @@ public class ShooterManager : MonoBehaviour
         return count;
     }
 
+    public bool AllGridShootersCanLeave()
+    {
+        if (shooters == null)
+            return false;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                Shooter shooter = shooters[x, y];
+                if (shooter == null)
+                {
+                    continue;
+                }
+
+                if (shooter.IsTunnelShooter || shooter.IsBusy || !shooter.IsClickable)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     public void SendFittingShooters(int room)
     {
         if (room <= 0 || shooters == null)
@@ -227,7 +262,9 @@ public class ShooterManager : MonoBehaviour
                         continue;
 
                     Vector2Int coordinate = shooter.Coordinate;
-                    shooter.SendToSlot();
+                    if (!shooter.TryEnterSlot())
+                        continue;
+
                     cellManager.SetFull(coordinate, false);
                     sent++;
                     sentOne = true;

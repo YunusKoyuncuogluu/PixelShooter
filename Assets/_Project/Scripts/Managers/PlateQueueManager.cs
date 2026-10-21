@@ -33,7 +33,21 @@ public class PlateQueueManager : MonoBehaviour
     private CancellationTokenSource lifeCts;
     private bool isBoardingBusy;
     private int maxPlateCount;
+    private int heldPlateCount;
     public bool HasAvailablePlate => queuedPlates.Count > 0 && !isBoardingBusy;
+    public bool HasIdlePlate => queuedPlates.Count > heldPlateCount;
+
+    public readonly struct PlateBoardResult
+    {
+        public readonly bool IsSeated;
+        public readonly bool HoldSpent;
+
+        public PlateBoardResult(bool isSeated, bool holdSpent)
+        {
+            IsSeated = isSeated;
+            HoldSpent = holdSpent;
+        }
+    }
 
 
     private void Awake()
@@ -71,24 +85,50 @@ public class PlateQueueManager : MonoBehaviour
         SpawnQueue(ResolvePlateCount(levelData));
     }
 
-    public async UniTask<bool> TryBoardShooterAsync(
+    private bool CanTakePlate(bool spendHold)
+    {
+        if (spendHold)
+            return queuedPlates.Count > 0;
+
+        return queuedPlates.Count > heldPlateCount;
+    }
+
+    public bool TryHoldPlate()
+    {
+        if (queuedPlates.Count <= heldPlateCount)
+            return false;
+
+        heldPlateCount++;
+        return true;
+    }
+
+    public void ReleaseHeldPlate()
+    {
+        if (heldPlateCount <= 0)
+            return;
+
+        heldPlateCount--;
+    }
+
+    public async UniTask<PlateBoardResult> TryBoardShooterAsync(
         ShooterController shooterController,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool spendHold)
     {
         if (shooterController == null)
-            return false;
+            return default;
 
         if (boundByShooter.ContainsKey(shooterController))
-            return true;
+            return new PlateBoardResult(true, false);
 
-        if (queuedPlates.Count == 0)
-            return false;
+        if (!CanTakePlate(spendHold))
+            return default;
 
         while (isBoardingBusy && !cancellationToken.IsCancellationRequested)
             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
 
-        if (queuedPlates.Count == 0)
-            return false;
+        if (!CanTakePlate(spendHold))
+            return default;
 
         isBoardingBusy = true;
         CancellationTokenSource linkedCts = null;
@@ -105,6 +145,11 @@ public class PlateQueueManager : MonoBehaviour
             Plate plate = queuedPlates[0];
             queuedPlates.RemoveAt(0);
             RefreshPlateCountText();
+
+            if (spendHold)
+                ReleaseHeldPlate();
+
+            PlateBoardResult taken = new PlateBoardResult(false, spendHold);
 
             GetConveyorStartPose(plate, out Vector3 flatPos, out Quaternion flatRot);
             Vector3 seatWorld = plate.PredictSeatWorldPosition(flatPos, flatRot);
@@ -129,7 +174,7 @@ public class PlateQueueManager : MonoBehaviour
             if (linked.IsCancellationRequested || shooterController == null)
             {
                 ReturnPlateToQueueEnd(plate);
-                return false;
+                return taken;
             }
 
             SplineExtensions.ClearExistingFollowers(shooterController.gameObject, objectPool);
@@ -140,7 +185,7 @@ public class PlateQueueManager : MonoBehaviour
 
             activePlates.Add(plate);
             boundByShooter[shooterController] = plate;
-            return true;
+            return new PlateBoardResult(true, spendHold);
         }
         finally
         {
@@ -314,6 +359,7 @@ public class PlateQueueManager : MonoBehaviour
         boundByShooter.Clear();
 
         isBoardingBusy = false;
+        heldPlateCount = 0;
         maxPlateCount = 0;
 
         RefreshPlateCountText();

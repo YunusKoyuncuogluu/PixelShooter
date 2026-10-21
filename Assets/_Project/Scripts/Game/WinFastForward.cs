@@ -117,43 +117,52 @@ namespace PixelShooter.Game
             if (total < 0)
                 return false;
 
+            if (TunnelsHoldShooters())
+                return false;
+
+            int room = slotManager != null ? slotManager.CountFreeSlots() : 0;
+            int gridCount = shooterManager != null ? shooterManager.CountGridShooters() : 0;
+            bool sendGrid = gridCount > 0
+                && shooterManager != null
+                && shooterManager.AllGridShootersCanLeave()
+                && gridCount + SlotReserve <= room;
+
+            if (gridCount > 0 && !sendGrid)
+                return false;
+
             ClearAmmo();
             AddConveyorAmmo(conveyor);
 
-            bool beltCovers = conveyor.ActiveShooterCount > 0 && CoversPixels();
-
-            bool tunnelsPending = tunnelManager != null && tunnelManager.HasPendingShooters();
-            int room = slotManager != null ? slotManager.CountFreeSlots() : 0;
-            int gridCount = shooterManager != null ? shooterManager.CountGridShooters() : 0;
-            bool gridFits = shooterManager != null && !tunnelsPending && gridCount > 0 && gridCount + SlotReserve <= room;
-
-            if (gridFits)
+            if (sendGrid)
+            {
                 AddGridShooterAmmo();
+            }
 
             if (slotManager != null)
             {
-                AddOccupantAmmo(slotManager.OccupantCount, true);
-                AddOccupantAmmo(slotManager.QueuedCount, false);
+                AddOccupantAmmo(slotManager.OccupantCount);
             }
 
-            if (beltCovers)
-                return true;
-
-            if (gridFits && CoversPixels())
-                return true;
-
-            if (gridCount > 0 || tunnelsPending)
-                return false;
-
             int committed = conveyor.ActiveShooterCount;
-
             if (slotManager != null)
-                committed += slotManager.OccupantCount + slotManager.QueuedCount;
+            {
+                committed += slotManager.OccupantCount;
+            }
+
+            if (sendGrid)
+            {
+                committed += gridCount;
+            }
 
             if (committed <= 0)
                 return false;
 
             return CoversPixels();
+        }
+
+        private bool TunnelsHoldShooters()
+        {
+            return tunnelManager != null && tunnelManager.HasPendingShooters();
         }
 
         private void ClearAmmo()
@@ -175,11 +184,11 @@ namespace PixelShooter.Game
             }
         }
 
-        private void AddOccupantAmmo(int count, bool occupants)
+        private void AddOccupantAmmo(int count)
         {
             for (int i = 0; i < count; i++)
             {
-                Shooter shooter = occupants ? slotManager.GetOccupant(i) : slotManager.GetQueued(i);
+                Shooter shooter = slotManager.GetOccupant(i);
 
                 if (shooter == null)
                     continue;
@@ -247,16 +256,15 @@ namespace PixelShooter.Game
             if (shooterManager == null || slotManager == null)
                 return;
 
-            if (tunnelManager != null && tunnelManager.HasPendingShooters())
-                return;
-
             int room = slotManager.CountFreeSlots();
-            int gridCount = shooterManager.CountGridShooters();
-
-            if (gridCount <= 0 || gridCount + SlotReserve > room)
+            if (room <= SlotReserve)
+            {
                 return;
+            }
 
             shooterManager.SendFittingShooters(room - SlotReserve);
+            if (tunnelManager != null)
+                tunnelManager.ControlTunnel();
         }
 
         private void DispatchParkedShooters()
